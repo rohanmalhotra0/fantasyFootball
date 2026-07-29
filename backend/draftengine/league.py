@@ -4,7 +4,7 @@ Stored as one JSON blob in the key_value table; every piece of value math
 (replacement levels, VORP, recommendations) reads from here.
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from .db import session_scope
 from .scoring import ScoringSettings
@@ -13,15 +13,21 @@ SETTINGS_KEY = "league_settings"
 
 
 class RosterSlots(BaseModel):
-    qb: int = 1
-    rb: int = 2
-    wr: int = 2
-    te: int = 1
-    flex: int = 1
-    superflex: int = 0
-    k: int = 1
-    dst: int = 1
-    bench: int = 6
+    qb: int = Field(default=1, ge=0, le=4)
+    rb: int = Field(default=2, ge=0, le=8)
+    wr: int = Field(default=2, ge=0, le=8)
+    te: int = Field(default=1, ge=0, le=4)
+    flex: int = Field(default=1, ge=0, le=6)
+    superflex: int = Field(default=0, ge=0, le=2)
+    k: int = Field(default=1, ge=0, le=2)
+    dst: int = Field(default=1, ge=0, le=2)
+    bench: int = Field(default=6, ge=0, le=20)
+
+    @model_validator(mode="after")
+    def _at_least_one_slot(self) -> "RosterSlots":
+        if self.total < 1:
+            raise ValueError("roster needs at least one slot")
+        return self
 
     @property
     def starters(self) -> int:
@@ -40,6 +46,16 @@ class LeagueSettings(BaseModel):
     draft_type: str = "snake"  # snake | auction
     my_slot: int = Field(default=5, ge=1, le=16)
     team_names: list[str] = []
+
+    @model_validator(mode="after")
+    def _slot_within_league(self) -> "LeagueSettings":
+        # Enforced at model level so bad input surfaces as a 422 field
+        # error, never a 500 from save_settings.
+        if self.my_slot > self.teams:
+            raise ValueError(
+                f"my_slot is {self.my_slot} but the league only has {self.teams} teams"
+            )
+        return self
 
     def team_name(self, index: int) -> str:
         """1-based team index -> display name."""

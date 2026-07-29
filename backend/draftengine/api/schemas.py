@@ -171,10 +171,6 @@ class DraftState(BaseModel):
     total_picks: int
 
 
-class CreateDraftResponse(BaseModel):
-    draft: DraftState
-
-
 class DraftListItem(BaseModel):
     id: int
     created_at: str
@@ -233,11 +229,8 @@ class RecommendationsResponse(BaseModel):
     adp_available: bool
 
 
-class OpponentPrediction(BaseModel):
-    team_index: int
-    name: str
-    likely_positions: list[str]
-    likely_players: list[str]
+class TeamOutlooksResponse(BaseModel):
+    teams: list[TeamOutlook]
 
 
 class DraftReportPickRow(BaseModel):

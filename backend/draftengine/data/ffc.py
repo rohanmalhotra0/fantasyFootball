@@ -33,10 +33,22 @@ def adp_path(year: int, teams: int = 12, scoring: str = "ppr") -> Path:
     return cache_dir() / "adp" / f"adp_{scoring}_{teams}_{year}.json"
 
 
+def _is_seed(path: Path) -> bool:
+    """True when the cached file came from seed.py rather than a real fetch."""
+    try:
+        return json.loads(path.read_text()).get("meta", {}).get("type") == "seed"
+    except Exception:
+        return False
+
+
 def fetch_adp(year: int, teams: int = 12, scoring: str = "ppr", force: bool = False) -> Path:
-    """Download ADP for a season into the cache; returns the cache path."""
+    """Download ADP for a season into the cache; returns the cache path.
+
+    A seeded cache file (from board_2026.csv) never satisfies a fetch —
+    the first successful real fetch replaces it.
+    """
     path = adp_path(year, teams, scoring)
-    if path.exists() and not force:
+    if path.exists() and not force and not _is_seed(path):
         return path
     if year in BROKEN_YEARS:
         raise ValueError(f"FFC ADP for {year} is broken server-side")
@@ -80,6 +92,8 @@ def load_adp(year: int, teams: int = 12, scoring: str = "ppr") -> pd.DataFrame |
                 "season": year,
             }
         )
-    df = pd.DataFrame(rows).sort_values("adp").reset_index(drop=True)
+    if not rows:
+        return None
+    df = pd.DataFrame(rows).sort_values("adp", kind="stable").reset_index(drop=True)
     df["adp_rank"] = df.index + 1
     return df

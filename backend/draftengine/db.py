@@ -4,6 +4,7 @@ SQLite is the default store; nothing here is SQLite-specific beyond the
 connection URL, so switching to Postgres is a config change.
 """
 
+import threading
 from collections.abc import Iterator
 from contextlib import contextmanager
 
@@ -19,24 +20,30 @@ class Base(DeclarativeBase):
 
 _engine = None
 _session_factory = None
+_engine_lock = threading.Lock()
 
 
 def get_engine():
     global _engine, _session_factory
     if _engine is None:
-        _engine = create_engine(
-            f"sqlite:///{db_path()}",
-            connect_args={"check_same_thread": False},
-        )
+        with _engine_lock:
+            if _engine is None:  # double-checked: refresh threads race here
+                engine = create_engine(
+                    f"sqlite:///{db_path()}",
+                    connect_args={"check_same_thread": False},
+                )
 
-        @event.listens_for(_engine, "connect")
-        def _set_sqlite_pragma(dbapi_connection, _):
-            cursor = dbapi_connection.cursor()
-            cursor.execute("PRAGMA journal_mode=WAL")
-            cursor.execute("PRAGMA foreign_keys=ON")
-            cursor.close()
+                @event.listens_for(engine, "connect")
+                def _set_sqlite_pragma(dbapi_connection, _):
+                    cursor = dbapi_connection.cursor()
+                    cursor.execute("PRAGMA journal_mode=WAL")
+                    cursor.execute("PRAGMA foreign_keys=ON")
+                    cursor.close()
 
-        _session_factory = sessionmaker(bind=_engine, expire_on_commit=False)
+                # Publish the engine last: session_scope gates on _engine,
+                # so the factory must exist before _engine is visible.
+                _session_factory = sessionmaker(bind=engine, expire_on_commit=False)
+                _engine = engine
     return _engine
 
 

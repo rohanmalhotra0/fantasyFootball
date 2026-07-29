@@ -22,11 +22,15 @@ def run_full_refresh(activate: bool = False) -> dict:
     init_db()
     summary: dict = {"started_at": datetime.now(UTC).isoformat(), "adp_errors": {}}
 
+    current = max(STATS_YEARS)
     for year in STATS_YEARS:
-        nflverse.download_stats(year)
+        # The in-progress season grows every week; always re-download it.
+        nflverse.download_stats(year, force=(year == current))
     for year in ADP_YEARS:
         try:
-            ffc.fetch_adp(year)
+            # Current-season ADP moves daily; force it. (A seeded cache
+            # file never satisfies a fetch either — see ffc.fetch_adp.)
+            ffc.fetch_adp(year, force=(year >= current))
         except Exception as exc:  # ADP is best-effort: FFC breaks, we don't
             summary["adp_errors"][year] = str(exc)
             log.warning("ADP fetch failed for %s: %s", year, exc)

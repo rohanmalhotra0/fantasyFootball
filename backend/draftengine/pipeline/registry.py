@@ -7,6 +7,8 @@ call (or `activate=True` from the CLI where the user is watching).
 """
 
 import json
+import os
+import threading
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -14,6 +16,11 @@ import xgboost as xgb
 
 from ..config import models_dir
 from ..db import session_scope
+
+# registry.json is read on every board build and written by the refresh
+# thread; writes are atomic (tmp + rename) and read-modify-write cycles
+# hold the lock so versions are never lost or torn.
+_registry_lock = threading.Lock()
 
 
 def _versions_index() -> Path:
@@ -28,7 +35,10 @@ def _read_index() -> dict:
 
 
 def _write_index(index: dict) -> None:
-    _versions_index().write_text(json.dumps(index, indent=2))
+    target = _versions_index()
+    tmp = target.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps(index, indent=2))
+    os.replace(tmp, target)
 
 
 def save_version(
@@ -43,16 +53,17 @@ def save_version(
     model.save_model(vdir / "model.json")
     (vdir / "metrics.json").write_text(json.dumps(metrics, indent=2))
     (vdir / "features.json").write_text(json.dumps(feature_columns, indent=2))
-    index = _read_index()
-    index["versions"].append(
-        {
-            "version": version,
-            "created_at": datetime.now(UTC).isoformat(),
-            "note": note,
-            "metrics": metrics,
-        }
-    )
-    _write_index(index)
+    with _registry_lock:
+        index = _read_index()
+        index["versions"].append(
+            {
+                "version": version,
+                "created_at": datetime.now(UTC).isoformat(),
+                "note": note,
+                "metrics": metrics,
+            }
+        )
+        _write_index(index)
     return version
 
 
@@ -70,12 +81,23 @@ def active_version() -> str | None:
 
 
 def activate(version: str) -> None:
-    index = _read_index()
-    if version not in {v["version"] for v in index["versions"]}:
-        raise ValueError(f"unknown model version: {version}")
-    index["active"] = version
-    _write_index(index)
+    with _registry_lock:
+        index = _read_index()
+        if version not in {v["version"] for v in index["versions"]}:
+            raise ValueError(f"unknown model version: {version}")
+        index["active"] = version
+        _write_index(index)
     _touch_kv("active_model", {"version": version})
+    _sync_active_rows(version)
+
+
+def _sync_active_rows(version: str) -> None:
+    """Keep the DB mirror's active flag in step with registry.json."""
+    from ..orm import ModelVersionRow
+
+    with session_scope() as session:
+        for row in session.query(ModelVersionRow).all():
+            row.active = row.version == version
 
 
 def load_model(version: str | None = None) -> xgb.XGBRegressor | None:

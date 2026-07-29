@@ -29,7 +29,7 @@ def seed_adp_from_board(
         return out  # never clobber a real fetch
     board = pd.read_csv(csv_path)
     players = []
-    for i, r in enumerate(board.sort_values("adp").itertuples(), start=1):
+    for i, r in enumerate(board.sort_values("adp", kind="stable").itertuples(), start=1):
         players.append(
             {
                 "player_id": 900000 + i,

@@ -261,6 +261,27 @@ export interface DraftReport {
   position_strengths: Record<string, 'strong' | 'average' | 'weak'>
 }
 
+export interface SimulationRequest {
+  slot: number
+}
+
+export interface EditPickRequest {
+  player_id?: string
+  player_name?: string
+}
+
+export interface VoiceParseRequest {
+  utterance: string
+}
+
+export interface TeamOutlooksResponse {
+  teams: TeamOutlook[]
+}
+
+export interface AdminModelsResponse {
+  versions: ModelVersionOut[]
+}
+
 export interface VoiceCandidate {
   player_id: string
   name: string

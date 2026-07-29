@@ -50,7 +50,8 @@ def replacement_levels(
     for pos, count in counts.items():
         pool = (
             projections[projections["position"] == pos]
-            .sort_values(points_col, ascending=False)
+            .dropna(subset=[points_col])
+            .sort_values(points_col, ascending=False, kind="stable")
             .reset_index(drop=True)
         )
         if pool.empty:
@@ -66,10 +67,15 @@ def add_vorp(
     """Attach vorp, model_rank, and (when ADP present) value_gap columns."""
     out = projections.copy()
     levels = replacement_levels(out, settings, points_col)
-    out["replacement_points"] = out["position"].map(levels).fillna(0.0)
+    # A position with no startable slots (or no replacement level) gets its
+    # replacement pinned to the position's best player: nobody there can
+    # have positive value over replacement.
+    pos_max = out.groupby("position")[points_col].transform("max")
+    out["replacement_points"] = out["position"].map(levels)
+    out["replacement_points"] = out["replacement_points"].fillna(pos_max).fillna(0.0)
     out["vorp"] = out[points_col] - out["replacement_points"]
     out["model_rank"] = (
-        out["vorp"].rank(ascending=False, method="first").astype(int)
+        out["vorp"].rank(ascending=False, method="first").astype("Int64")
     )
     if "adp_rank" in out.columns:
         out["value_gap"] = out["adp_rank"] - out["model_rank"]

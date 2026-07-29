@@ -106,17 +106,20 @@ class TestAddVorp:
         # rb0: drafted 6th overall, model says 4th -> falls 2 spots (value)
         assert by_id.loc["rb0", "value_gap"] == 2
 
-    def test_unknown_position_gets_zero_replacement(self):
+    def test_unstartable_position_capped_at_zero_vorp(self):
+        # A position with no startable slots pins replacement to its best
+        # player: nobody there can carry positive value over replacement.
         board = pd.DataFrame(
             {
-                "player_id": ["fb1"],
-                "position": ["FB"],  # not in any roster slot
-                "projected_points": [50.0],
+                "player_id": ["fb1", "fb2"],
+                "position": ["FB", "FB"],  # not in any roster slot
+                "projected_points": [50.0, 30.0],
             }
         )
         out = add_vorp(board, LeagueSettings())
-        assert out.loc[0, "replacement_points"] == 0.0
-        assert out.loc[0, "vorp"] == pytest.approx(50.0)
+        assert out.loc[0, "replacement_points"] == pytest.approx(50.0)
+        assert out.loc[0, "vorp"] == pytest.approx(0.0)
+        assert out.loc[1, "vorp"] == pytest.approx(-20.0)
 
     def test_does_not_mutate_input(self):
         board = small_board()
