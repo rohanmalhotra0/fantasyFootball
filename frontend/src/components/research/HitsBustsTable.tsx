@@ -7,6 +7,7 @@ import { downloadCsv, toCsv, type CsvColumn } from '../../lib/csv'
  * The badge pairs an arrow icon with words ("+38 better") — never color alone.
  */
 interface Props {
+  tableTestId: string
   title: string
   rows: HitBustRow[]
   exportTestId: string
@@ -44,9 +45,9 @@ function DiffBadge({ diff }: { diff: number }) {
   )
 }
 
-export default function HitsBustsTable({ title, rows, exportTestId, exportFilename }: Props) {
+export default function HitsBustsTable({ title, rows, exportTestId, exportFilename, tableTestId }: Props) {
   return (
-    <section className="card space-y-4" aria-label={title}>
+    <section className="card space-y-4" aria-label={title} data-testid={tableTestId}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-xl font-bold">{title}</h2>
         <button

@@ -7,7 +7,7 @@
  * catch up purely via their own fetch/WS logic.
  */
 import { expect, test } from '@playwright/test'
-import { assertBoardInSync, createDraft, draftBestViaApi, getDraftState } from './helpers'
+import { assertBoardInSync, createDraft, draftBestViaApi, getDraftState, openTab } from './helpers'
 
 test('reload, two-tab sync, and offline recovery all converge on the API state', async ({
   page,
@@ -18,6 +18,7 @@ test('reload, two-tab sync, and offline recovery all converge on the API state',
 
   const draft = await createDraft(request)
   await page.goto(`/draft/${draft.id}`)
+  await openTab(page, 'board')
   await expect(page.getByTestId('board-grid')).toBeVisible()
 
   // --- 5 picks via the API, then a hard reload: the board must rebuild ---
@@ -32,6 +33,7 @@ test('reload, two-tab sync, and offline recovery all converge on the API state',
   // --- Second tab on the same draft: both tabs see pick 6 ---
   const page2 = await context.newPage()
   await page2.goto(`/draft/${draft.id}`)
+  await openTab(page2, 'board')
   await expect(page2.getByTestId('board-grid')).toBeVisible()
   await assertBoardInSync(page2, request, draft.id)
 

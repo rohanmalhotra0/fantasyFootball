@@ -14,6 +14,8 @@ const fullSuite = !!process.env.E2E_FULL
 
 export default defineConfig({
   testDir: './tests',
+  // Dev-server e2e: first hits pay Vite cold-transform + model warmup costs.
+  expect: { timeout: 15_000 },
   testIgnore: fullSuite
     ? []
     : [

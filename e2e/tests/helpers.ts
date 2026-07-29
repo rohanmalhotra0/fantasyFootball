@@ -247,6 +247,15 @@ export function tableRows(page: Page, testId: string): Locator {
 // Draft-board sync assertions
 // ---------------------------------------------------------------------------
 
+/** The room renders one tab panel at a time; switch before asserting. */
+export async function openTab(page: Page, tab: 'next' | 'board' | 'teams'): Promise<void> {
+  const button = page.getByTestId(`tab-${tab}`)
+  await expect(button).toBeVisible()
+  if ((await button.getAttribute('aria-selected')) !== 'true') {
+    await button.click()
+  }
+}
+
 /** Snapshot of every grid-cell-{overall} element's text, keyed by overall. */
 export async function gridCellTexts(page: Page): Promise<Record<number, string>> {
   return page.evaluate(() => {
@@ -282,6 +291,7 @@ export async function assertBoardInSync(
   const timeout = opts.timeout ?? 15_000
   const state = await getDraftState(request, draftId)
 
+  await openTab(page, 'board')
   await expect
     .poll(async () => countFilled(await gridCellTexts(page)), {
       timeout,
@@ -353,6 +363,7 @@ export async function mockDraftRunner(
     const recs = await getRecs(request, draftId)
 
     if (recs.my_turn) {
+      await openTab(page, 'next')
       const btn = page.getByTestId('draft-best-button')
       await expect(btn, `draft-best-button should appear on my turn (pick ${made + 1})`).toBeVisible({
         timeout: 15_000,

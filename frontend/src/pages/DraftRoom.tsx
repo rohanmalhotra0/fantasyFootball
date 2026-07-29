@@ -365,6 +365,7 @@ function Room({ draftId }: { draftId: number }) {
                   type="button"
                   role="tab"
                   id={`tab-${t.id}`}
+                  data-testid={`tab-${t.id}`}
                   aria-selected={tab === t.id}
                   aria-controls={`panel-${t.id}`}
                   className={`flex items-center gap-2 rounded-lg px-4 py-2 text-lg font-bold ${

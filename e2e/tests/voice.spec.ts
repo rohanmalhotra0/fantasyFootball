@@ -112,7 +112,7 @@ test.describe('voice pick logging', () => {
 
     const draft = await createDraft(request)
     await page.goto(`/draft/${draft.id}`)
-    await expect(page.getByTestId('board-grid')).toBeVisible()
+    await expect(page.getByTestId('my-team-panel')).toBeVisible()
 
     await expect(page.getByTestId('voice-unavailable')).toBeVisible()
     await expect(page.getByTestId('voice-toggle')).toHaveCount(0)
@@ -127,7 +127,7 @@ test.describe('voice pick logging', () => {
     const draft = await createDraft(request)
     await page.addInitScript(installFakeSpeechRecognition)
     await page.goto(`/draft/${draft.id}`)
-    await expect(page.getByTestId('board-grid')).toBeVisible()
+    await expect(page.getByTestId('my-team-panel')).toBeVisible()
 
     // Enable voice; the app should construct + start our fake.
     await expect(page.getByTestId('voice-unavailable')).toHaveCount(0)

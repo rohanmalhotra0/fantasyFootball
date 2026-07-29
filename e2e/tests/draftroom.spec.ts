@@ -11,6 +11,7 @@
 import { expect, request as pwRequest, test } from '@playwright/test'
 import {
   assertBoardInSync,
+  openTab,
   createDraft,
   getDraftState,
   getRecs,
@@ -41,9 +42,12 @@ test.describe('draft room', () => {
     await expect(banner).toBeVisible()
     await expect(banner, 'banner should show pick 1').toContainText(/pick\s*1\b|1\.01/i)
 
-    await expect(page.getByTestId('board-grid')).toBeVisible()
     await expect(page.getByTestId('pick-timer')).toBeVisible()
+    await openTab(page, 'board')
+    await expect(page.getByTestId('board-grid')).toBeVisible()
+    await openTab(page, 'teams')
     await expect(page.getByTestId('opponent-tracker')).toBeVisible()
+    await openTab(page, 'next')
     await expect(page.getByTestId('next-up')).toBeVisible()
     await expect(page.getByTestId('my-team-panel')).toBeVisible()
     // Not my turn yet, so the one-click best pick must not be offered.
@@ -77,6 +81,7 @@ test.describe('draft room', () => {
   test('pick-search logs a pick for the team on the clock', async ({ page, request }) => {
     const draft = await createDraft(request)
     await page.goto(`/draft/${draft.id}`)
+    await openTab(page, 'board')
     await expect(page.getByTestId('board-grid')).toBeVisible()
 
     const recs = await getRecs(request, draft.id)

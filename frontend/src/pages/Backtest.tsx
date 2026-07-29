@@ -176,12 +176,14 @@ export default function Backtest() {
               title="Hits — model found value"
               rows={data.hits}
               exportTestId="export-hits"
+              tableTestId="hits-table"
               exportFilename={`hits-${data.season}.csv`}
             />
             <HitsBustsTable
               title="Busts — model was fooled"
               rows={data.busts}
               exportTestId="export-busts"
+              tableTestId="busts-table"
               exportFilename={`busts-${data.season}.csv`}
             />
           </div>
