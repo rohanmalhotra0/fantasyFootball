@@ -10,6 +10,7 @@ ROUTER_MODULES = (
     "routes_draft",
     "routes_voice",
     "routes_admin",
+    "routes_analysis",
 )
 
 

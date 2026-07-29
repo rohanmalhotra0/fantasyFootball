@@ -31,7 +31,7 @@ XGB_PARAMS = {
     "n_jobs": 4,
 }
 
-FIRST_TARGET_SEASON = 2017  # earliest season with two lag years (data starts 2015)
+FIRST_TARGET_SEASON = 2001  # earliest season with two lag years (data starts 1999)
 
 
 def fit_model(train: pd.DataFrame) -> xgb.XGBRegressor:

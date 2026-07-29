@@ -34,7 +34,9 @@ def db_path() -> Path:
     return data_dir() / "draftengine.sqlite3"
 
 
-# Seasons covered by the pipeline.
-STATS_YEARS = list(range(2015, 2026))
+# Seasons covered by the pipeline. nflverse player_stats releases cover
+# 1999+ with the same legacy URL pattern (see data/nflverse.py for what
+# is actually populated per era).
+STATS_YEARS = list(range(1999, 2026))
 ADP_YEARS = [*range(2017, 2025), 2026]  # 2025 is broken server-side at FFC
 CURRENT_SEASON = 2026
