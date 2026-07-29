@@ -22,7 +22,11 @@ async def lifespan(app: FastAPI):
         seed_adp_from_board()
     except Exception:  # seeding is best-effort, never blocks startup
         log.warning("ADP seed from board_2026.csv failed", exc_info=True)
+    from .jobs.scheduler import start_scheduler, stop_scheduler
+
+    start_scheduler()  # no-op unless DRAFTENGINE_SCHEDULE=1
     yield
+    stop_scheduler()
 
 
 def create_app() -> FastAPI:
