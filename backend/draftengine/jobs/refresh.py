@@ -6,7 +6,7 @@ the new validation numbers, or via activate=True from the CLI.
 """
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from ..config import ADP_YEARS, STATS_YEARS
 from ..data import ffc, nflverse
@@ -20,7 +20,7 @@ VALIDATION_YEARS = [2022, 2023, 2024, 2025]
 
 def run_full_refresh(activate: bool = False) -> dict:
     init_db()
-    summary: dict = {"started_at": datetime.now(timezone.utc).isoformat(), "adp_errors": {}}
+    summary: dict = {"started_at": datetime.now(UTC).isoformat(), "adp_errors": {}}
 
     for year in STATS_YEARS:
         nflverse.download_stats(year)
@@ -52,7 +52,7 @@ def run_full_refresh(activate: bool = False) -> dict:
         registry.activate(version)
         summary["activated"] = True
 
-    summary["finished_at"] = datetime.now(timezone.utc).isoformat()
+    summary["finished_at"] = datetime.now(UTC).isoformat()
     summary["version"] = version
     summary["metrics"] = metrics
     _record_refresh(summary)

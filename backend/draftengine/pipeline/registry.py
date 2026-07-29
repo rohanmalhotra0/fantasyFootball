@@ -7,7 +7,7 @@ call (or `activate=True` from the CLI where the user is watching).
 """
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import xgboost as xgb
@@ -37,7 +37,7 @@ def save_version(
     feature_columns: list[str],
     note: str = "",
 ) -> str:
-    version = datetime.now(timezone.utc).strftime("v%Y%m%d_%H%M%S")
+    version = datetime.now(UTC).strftime("v%Y%m%d_%H%M%S")
     vdir = models_dir() / version
     vdir.mkdir(parents=True, exist_ok=True)
     model.save_model(vdir / "model.json")
@@ -47,7 +47,7 @@ def save_version(
     index["versions"].append(
         {
             "version": version,
-            "created_at": datetime.now(timezone.utc).isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
             "note": note,
             "metrics": metrics,
         }

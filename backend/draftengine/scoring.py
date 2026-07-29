@@ -5,9 +5,8 @@ work everywhere (season totals, projections, VORP) — never read the
 pre-computed fantasy_points_ppr column except as a cross-check.
 """
 
-from pydantic import BaseModel
-
 import pandas as pd
+from pydantic import BaseModel
 
 
 class ScoringSettings(BaseModel):

@@ -10,6 +10,14 @@ from .db import init_db
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
+    # Seed current-season ADP from the research board when the live FFC
+    # fetch has never succeeded (idempotent; a real refresh overwrites it).
+    try:
+        from .data.seed import seed_adp_from_board
+
+        seed_adp_from_board()
+    except Exception:  # seeding is best-effort, never blocks startup
+        pass
     yield
 
 
