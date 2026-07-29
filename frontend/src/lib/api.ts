@@ -27,7 +27,26 @@ export class ApiError extends Error {
   }
 }
 
+/** True when built for a static host (GitHub Pages): GETs come from
+ *  pre-exported JSON snapshots and every mutation is disabled. */
+export const STATIC_MODE = import.meta.env.VITE_STATIC_API === '1'
+
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  if (STATIC_MODE) {
+    const method = init?.method ?? 'GET'
+    if (method !== 'GET') {
+      throw new ApiError(
+        503,
+        'Read-only demo — clone the repo and run `make dev` for the live app',
+      )
+    }
+    const base = import.meta.env.BASE_URL ?? '/'
+    const resp = await fetch(`${base}api-static${path}.json`)
+    if (!resp.ok) {
+      throw new ApiError(resp.status, `No static snapshot for ${path}`)
+    }
+    return resp.json() as Promise<T>
+  }
   const resp = await fetch(path, {
     headers: { 'Content-Type': 'application/json' },
     ...init,
