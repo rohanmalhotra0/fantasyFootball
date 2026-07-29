@@ -1,7 +1,10 @@
 // Typed API client. All calls go through apiFetch so errors surface uniformly.
 
 import type {
+  AgingCurvesResponse,
   BacktestYearResponse,
+  ConsistencyResponse,
+  TrendsResponse,
   DashboardResponse,
   DraftListItem,
   DraftReport,
@@ -113,6 +116,11 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ utterance }),
     }),
+
+  analysisAging: () => apiFetch<AgingCurvesResponse>('/api/analysis/aging'),
+  analysisConsistency: (season: number) =>
+    apiFetch<ConsistencyResponse>(`/api/analysis/consistency/${season}`),
+  analysisTrends: () => apiFetch<TrendsResponse>('/api/analysis/trends'),
 
   adminModels: () => apiFetch<{ versions: ModelVersionOut[] }>('/api/admin/models'),
   activateModel: (version: string) =>

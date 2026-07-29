@@ -87,6 +87,7 @@ test.describe('draft room', () => {
     const recs = await getRecs(request, draft.id)
     const target = recs.recommendations[0]
 
+    await openTab(page, 'next')
     await page.getByTestId('pick-search').click()
     const input = page.getByTestId('pick-search-input')
     await expect(input).toBeVisible()

@@ -315,3 +315,75 @@ export interface RefreshStatus {
   staged_version: string | null
   message: string | null
 }
+
+// ---------- insights (mirrors api/routes_analysis.py) ----------
+
+export interface AgingBucket {
+  experience: number
+  label: string
+  n: number
+  mean_points: number
+  median_points: number
+  mean_ppg: number
+  median_ppg: number
+  ratio_vs_peak: number
+}
+
+export interface PositionAgingCurve {
+  position: string
+  peak_experience: number
+  buckets: AgingBucket[]
+}
+
+export interface AgingCurvesResponse {
+  positions: PositionAgingCurve[]
+  min_games: number
+  left_censored_first_season: number
+  note: string
+}
+
+export interface ConsistencyPlayer {
+  player_id: string
+  name: string
+  position: string
+  team: string | null
+  games: number
+  total_points: number
+  ppg: number
+  stdev: number
+  cv: number | null
+  boom_rate: number
+  bust_rate: number
+  floor: number
+  ceiling: number
+}
+
+export interface ConsistencyResponse {
+  season: number
+  min_games: number
+  boom_threshold: number
+  bust_threshold: number
+  players: ConsistencyPlayer[]
+}
+
+export interface PositionTrend {
+  total_points: number
+  share: number
+  top12_avg: number
+  replacement_points: number
+}
+
+export interface SeasonTrend {
+  season: number
+  total_points: number
+  positions: Record<string, PositionTrend>
+  pass_share: number
+  rush_share: number
+  receiving_share: number
+}
+
+export interface TrendsResponse {
+  seasons: SeasonTrend[]
+  replacement_cutoffs: Record<string, number>
+  note: string
+}

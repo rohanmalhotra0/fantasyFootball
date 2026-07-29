@@ -77,28 +77,32 @@ def _no_match(team_index, explicit_team, reason: str) -> VoiceParseResponse:
 
 @router.post("/drafts/{draft_id}/voice", response_model=VoiceParseResponse)
 def parse_voice(draft_id: int, req: VoiceParseRequest) -> VoiceParseResponse:
-    state = _get_state(draft_id)
+    # engine.get_state returns a DraftState-shaped dict (not an object);
+    # normalize access here so either shape keeps working.
+    raw_state = _get_state(draft_id)
+    state = raw_state if isinstance(raw_state, dict) else raw_state.__dict__
     pool = _get_player_pool(draft_id)
 
-    parsed = parse_utterance(req.utterance, list(state.team_names or []), state.teams)
+    team_names = list(state.get("team_names") or [])
+    teams = int(state.get("teams") or 12)
+    on_clock_team = state.get("on_clock_team")
+
+    parsed = parse_utterance(req.utterance, team_names, teams)
     explicit_team = bool(parsed["explicit_team"])
-    team_index = parsed["team_index"] if explicit_team else state.on_clock_team
+    team_index = parsed["team_index"] if explicit_team else on_clock_team
 
     mismatch_note = None
-    if (
-        explicit_team
-        and state.on_clock_team is not None
-        and parsed["team_index"] != state.on_clock_team
-    ):
+    if explicit_team and on_clock_team is not None and parsed["team_index"] != on_clock_team:
         mismatch_note = (
-            f"Team {parsed['team_index']} isn't on the clock — Team {state.on_clock_team} is"
+            f"Team {parsed['team_index']} isn't on the clock — Team {on_clock_team} is"
         )
 
     player_text = str(parsed["player_text"] or "").strip()
     if not player_text:
         return _no_match(team_index, explicit_team, "I didn't hear a player name — try again")
 
-    picked_ids = {p.player_id for p in state.picks}
+    picks = state.get("picks") or []
+    picked_ids = {p["player_id"] if isinstance(p, dict) else p.player_id for p in picks}
 
     # Match against the FULL pool first: if the utterance most plausibly names
     # a player who is already gone, say so instead of guessing someone else.

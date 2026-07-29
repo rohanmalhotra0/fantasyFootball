@@ -260,7 +260,7 @@ export async function openTab(page: Page, tab: 'next' | 'board' | 'teams'): Prom
 export async function gridCellTexts(page: Page): Promise<Record<number, string>> {
   return page.evaluate(() => {
     const out: Record<number, string> = {}
-    for (const el of Array.from(document.querySelectorAll('[data-testid^="grid-cell-"]'))) {
+    for (const el of Array.from(document.querySelectorAll('[data-testid^="grid-cell-"][data-player-id]'))) {
       const id = el.getAttribute('data-testid') ?? ''
       const overall = Number(id.slice('grid-cell-'.length))
       if (!Number.isNaN(overall)) out[overall] = (el.textContent ?? '').trim()

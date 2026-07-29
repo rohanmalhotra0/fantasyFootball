@@ -64,6 +64,7 @@ export default function BoardGrid({ state, onEditPick }: BoardGridProps) {
                       <button
                         type="button"
                         data-testid={`grid-cell-${overall}`}
+                        data-player-id={pick.player_id}
                         title={`${pick.player_name} — pick ${overall}. Click to edit.`}
                         aria-label={`Edit pick ${overall}: ${pick.player_name}`}
                         onClick={() => onEditPick(pick)}

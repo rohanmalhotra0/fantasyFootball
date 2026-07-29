@@ -169,6 +169,7 @@ export default function Settings() {
             return (
               <label
                 key={p.id}
+                data-testid={`scoring-preset-${p.id}`}
                 className={`cursor-pointer rounded-2xl border-2 p-4 ${
                   selected ? 'border-blue-700 bg-blue-50' : 'border-slate-300 bg-white'
                 }`}
@@ -177,7 +178,7 @@ export default function Settings() {
                   type="radio"
                   name="scoring-preset"
                   className="sr-only"
-                  data-testid={`scoring-preset-${p.id}`}
+                  aria-label={p.label}
                   checked={selected}
                   onChange={() => choosePreset(p.id)}
                 />
