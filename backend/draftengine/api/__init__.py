@@ -13,6 +13,7 @@ def register_routes(app: FastAPI) -> None:
         "routes_rankings",
         "routes_settings",
         "routes_draft",
+        "routes_voice",
         "routes_admin",
     ):
         try:

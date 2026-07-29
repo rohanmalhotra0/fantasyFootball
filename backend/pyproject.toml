@@ -17,6 +17,7 @@ dependencies = [
     "apscheduler>=3.10",
     "rapidfuzz>=3.6",
     "metaphone>=0.6",
+    "pyarrow>=25.0.0",
 ]
 
 [project.optional-dependencies]
