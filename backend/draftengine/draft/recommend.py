@@ -221,26 +221,40 @@ def team_outlooks(draft_id: int) -> dict:
 # ---------- scarcity ----------
 
 
-def _scarcity_bonus(remaining: pd.DataFrame, row) -> float:
-    """15 when this is the last player of his tier at his position AND the
-    dropoff to the best next-tier player exceeds 12 projected points."""
+def _scarcity_table(remaining: pd.DataFrame) -> dict[tuple[str, float], float]:
+    """(position, tier) -> bonus for the LAST player of that tier.
+
+    Precomputed once per request: the previous per-player version filtered
+    the whole remaining frame 600+ times and dominated endpoint latency.
+    A tier's bonus applies only when exactly one player of it remains and
+    the dropoff to the best next-tier player exceeds SCARCITY_DROPOFF.
+    """
+    table: dict[tuple[str, float], float] = {}
+    tiered = remaining[remaining["tier"].notna() & remaining["projected_points"].notna()]
+    for position, at_pos in tiered.groupby("position"):
+        counts = at_pos.groupby("tier")["player_id"].count()
+        best_proj = at_pos.groupby("tier")["projected_points"].max().sort_index()
+        tiers = list(best_proj.index)
+        for i, tier in enumerate(tiers):
+            if counts.get(tier, 0) != 1:
+                continue
+            later = best_proj.iloc[i + 1 :]
+            if later.empty:
+                continue
+            only_player_proj = float(
+                at_pos.loc[at_pos["tier"] == tier, "projected_points"].max()
+            )
+            dropoff = only_player_proj - float(later.max())
+            if dropoff > SCARCITY_DROPOFF:
+                table[(str(position), float(tier))] = SCARCITY_BONUS
+    return table
+
+
+def _scarcity_bonus(scarcity: dict[tuple[str, float], float], row) -> float:
     tier = float_or_none(row.tier)
-    proj = float_or_none(row.projected_points)
-    if tier is None or proj is None:
+    if tier is None:
         return 0.0
-    at_pos = remaining[
-        (remaining["position"] == row.position)
-        & remaining["tier"].notna()
-        & remaining["projected_points"].notna()
-    ]
-    same_tier_others = at_pos[(at_pos["tier"] == tier) & (at_pos["player_id"] != row.player_id)]
-    if not same_tier_others.empty:
-        return 0.0
-    next_tier = at_pos[at_pos["tier"] > tier]
-    if next_tier.empty:
-        return 0.0
-    dropoff = proj - float(next_tier["projected_points"].max())
-    return SCARCITY_BONUS if dropoff > SCARCITY_DROPOFF else 0.0
+    return scarcity.get((str(row.position), float(tier)), 0.0)
 
 
 # ---------- main entry ----------
@@ -302,6 +316,7 @@ def build_recommendations(draft_id: int) -> dict:
     )
     kdst_time = rounds_left_for_me <= open_kdst + 1
 
+    scarcity = _scarcity_table(remaining)
     recs: list[dict] = []
     for row in remaining.itertuples(index=False):
         pos = str(row.position)
@@ -342,7 +357,7 @@ def build_recommendations(draft_id: int) -> dict:
                 need = NEED_BONUS_BENCH
             else:
                 need = 0.0
-            scarce = _scarcity_bonus(remaining, row)
+            scarce = _scarcity_bonus(scarcity, row)
             urgency = URGENCY_WEIGHT * (1.0 - sp) if sp is not None else 0.0
             score = (vorp or 0.0) + need + scarce + urgency
             if slot_label is not None:
