@@ -51,9 +51,16 @@ export default function PickSearch({
           type="search"
           data-testid="pick-search-input"
           className="w-full rounded-xl border-2 border-slate-300 px-4 py-3 text-lg"
-          placeholder="Type a name…"
+          placeholder="Type a name, press Enter for the top match"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => {
+            // Keyboard path: Enter commits the top match.
+            if (e.key === 'Enter' && !busy && results.length > 0) {
+              e.preventDefault()
+              onPick(results[0])
+            }
+          }}
         />
       </label>
       {players.length === 0 ? (

@@ -132,7 +132,7 @@ export default function TrendsSection({ data, error }: Props) {
                       tickFormatter={(v: number) => pct(v)}
                       domain={[0, 1]}
                       tick={{ fill: '#475569' }}
-                      width={44}
+                      width={56}
                     />
                     <Tooltip
                       formatter={(value) => pct(Number(value), 1)}

@@ -106,15 +106,26 @@ export default function ConfirmToast({
                 <p className="text-lg font-bold">
                   Picking in {remaining}s — tap Undo to cancel
                 </p>
-                <button
-                  type="button"
-                  data-testid="voice-undo"
-                  className="btn-secondary w-full justify-center py-4 text-2xl"
-                  onClick={onDismiss}
-                  aria-label={`Undo — do not pick ${best.name}`}
-                >
-                  <span aria-hidden="true">↩️</span> Undo
-                </button>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    data-testid="voice-undo"
+                    className="btn-secondary flex-1 justify-center py-4 text-2xl"
+                    onClick={onDismiss}
+                    aria-label={`Undo — do not pick ${best.name}`}
+                  >
+                    <span aria-hidden="true">↩️</span> Undo
+                  </button>
+                  <button
+                    type="button"
+                    data-testid="voice-confirm"
+                    className="btn-primary flex-1 justify-center py-4 text-2xl"
+                    onClick={() => onCommit(best)}
+                    aria-label={`Confirm ${best.name} now`}
+                  >
+                    <span aria-hidden="true">✅</span> Now
+                  </button>
+                </div>
               </>
             ) : (
               <>

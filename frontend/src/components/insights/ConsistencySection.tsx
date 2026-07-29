@@ -200,7 +200,7 @@ export default function ConsistencySection({ seasons }: Props) {
               Click a column to sort. Floor / ceiling = 25th / 75th percentile week. Showing top{' '}
               {Math.min(TABLE_ROWS, sorted.length)} of {sorted.length}.
             </p>
-            <div className="overflow-x-auto">
+            <div className="max-h-[34rem] overflow-x-auto overflow-y-auto">
               <table className="w-full text-left">
                 <thead>
                   <tr className="border-b-2 border-slate-200">
@@ -255,7 +255,7 @@ export default function ConsistencySection({ seasons }: Props) {
             </p>
             <div className="h-80 w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <ScatterChart margin={{ top: 8, right: 16, bottom: 24, left: 8 }}>
+                <ScatterChart margin={{ top: 24, right: 16, bottom: 24, left: 8 }}>
                   <CartesianGrid stroke="#e2e8f0" strokeWidth={1} />
                   <XAxis
                     type="number"

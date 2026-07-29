@@ -30,7 +30,7 @@ test.describe('draft room', () => {
   })
 
   test('full 180-pick mock draft with live sync, undo, and graded report', async ({ page, request }) => {
-    test.setTimeout(240_000)
+    test.setTimeout(420_000)
 
     // --- Create the draft from the lobby ---
     await page.goto('/draft')

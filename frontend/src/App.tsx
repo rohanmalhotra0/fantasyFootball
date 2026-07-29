@@ -4,6 +4,7 @@ import Admin from './pages/Admin'
 import Backtest from './pages/Backtest'
 import Dashboard from './pages/Dashboard'
 import DraftRoom from './pages/DraftRoom'
+import Insights from './pages/Insights'
 import Rankings from './pages/Rankings'
 import Settings from './pages/Settings'
 
@@ -27,6 +28,7 @@ const NAV = [
   { to: '/', label: 'Home', icon: '🏠' },
   { to: '/backtest', label: 'Backtests', icon: '📈' },
   { to: '/rankings', label: 'Big Board', icon: '🏈' },
+  { to: '/insights', label: 'Insights', icon: '🔬' },
   { to: '/settings', label: 'League', icon: '⚙️' },
   { to: '/draft', label: 'Draft Room', icon: '🎯' },
   { to: '/admin', label: 'Data', icon: '🗄️' },
@@ -70,6 +72,7 @@ export default function App() {
           <Route path="/" element={<Dashboard />} />
           <Route path="/backtest" element={<Backtest />} />
           <Route path="/rankings" element={<Rankings />} />
+          <Route path="/insights" element={<Insights />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/draft" element={STATIC_MODE ? <StaticDraftNotice /> : <DraftRoom />} />
           <Route

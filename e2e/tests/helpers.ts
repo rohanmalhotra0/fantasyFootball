@@ -359,10 +359,18 @@ export async function mockDraftRunner(
 
   const apiPickCount = async () => (await getDraftState(request, draftId)).picks.length
 
-  while (made < totalPicks) {
-    const recs = await getRecs(request, draftId)
+  // Snake math locally (same formula as the engine) so opponent picks cost
+  // one recs fetch instead of two; my turns are still proven through the UI.
+  const onClockTeam = (overall: number): number => {
+    const r = Math.floor((overall - 1) / state.teams) + 1
+    const i = (overall - 1) % state.teams
+    return r % 2 === 1 ? i + 1 : state.teams - i
+  }
 
-    if (recs.my_turn) {
+  while (made < totalPicks) {
+    const myTurn = onClockTeam(made + 1) === state.my_slot
+
+    if (myTurn) {
       await openTab(page, 'next')
       const btn = page.getByTestId('draft-best-button')
       await expect(btn, `draft-best-button should appear on my turn (pick ${made + 1})`).toBeVisible({
@@ -370,6 +378,7 @@ export async function mockDraftRunner(
       })
       await btn.click()
     } else {
+      const recs = await getRecs(request, draftId)
       const best = recs.recommendations[0]
       expect(best, `recommendations should be non-empty at pick ${made + 1}`).toBeTruthy()
       await makePick(request, draftId, { player_id: best.player_id, source: 'manual' })
