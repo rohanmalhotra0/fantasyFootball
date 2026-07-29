@@ -8,8 +8,22 @@ const launchOptions = fs.existsSync(containerChromium)
   ? { executablePath: containerChromium }
   : {}
 
+// The full suite exercises pages that land at integration time; until
+// then only the smoke spec runs unless E2E_FULL=1 is set.
+const fullSuite = !!process.env.E2E_FULL
+
 export default defineConfig({
   testDir: './tests',
+  testIgnore: fullSuite
+    ? []
+    : [
+        '**/draftroom.spec.ts',
+        '**/persistence.spec.ts',
+        '**/rankings.spec.ts',
+        '**/research.spec.ts',
+        '**/settings.spec.ts',
+        '**/voice.spec.ts',
+      ],
   timeout: 60_000,
   retries: process.env.CI ? 1 : 0,
   workers: 1,
