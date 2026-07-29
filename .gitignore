@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+
+# Node
+node_modules/
+dist/
+frontend/coverage/
+
+# Data cache (raw downloads + derived datasets are reproducible via `make data`)
+data/cache/
+data/models/
+*.sqlite3
+*.db
+
+# Playwright
+e2e/test-results/
+e2e/playwright-report/
+e2e/.last-run.json
+
+# Env / editor
+.env
+.env.*
+.DS_Store
+.idea/
+.vscode/
