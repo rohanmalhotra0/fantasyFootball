@@ -23,7 +23,23 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    outputs:
+      pages_enabled: ${{ steps.pages-check.outputs.enabled }}
     steps:
+      - name: Check whether Pages is enabled on this repo
+        id: pages-check
+        run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/pages")
+          echo "Pages API status: $code"
+          if [ "$code" = "200" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::GitHub Pages is not enabled — enable it once in Settings -> Pages -> Source: GitHub Actions, then the next push deploys automatically."
+          fi
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
         with:
@@ -70,20 +86,16 @@ jobs:
           path: frontend/dist
 
   deploy:
-    name: deploy (needs Pages enabled once in repo Settings)
     needs: build
+    # Skipped (not failed) until the repo owner enables Pages once in
+    # Settings -> Pages -> Source: GitHub Actions. The workflow token is
+    # not allowed to create the site itself.
+    if: needs.build.outputs.pages_enabled == 'true'
     runs-on: ubuntu-latest
-    # Deploy cannot succeed until the repo owner enables Pages (Settings ->
-    # Pages -> Source: GitHub Actions); the workflow token is not allowed to
-    # create the site itself. Don't fail the whole check run over that.
-    continue-on-error: true
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      # Creates the Pages site via API if the repo hasn't enabled it yet.
       - uses: actions/configure-pages@v5
-        with:
-          enablement: true
       - id: deployment
         uses: actions/deploy-pages@v4
