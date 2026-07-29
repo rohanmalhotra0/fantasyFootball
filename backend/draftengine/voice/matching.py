@@ -33,6 +33,8 @@ from ..names import normalize_name
 # forms (jr / iii / ...), so extend locally here — do not edit names.py.
 _SPOKEN_SUFFIX = re.compile(r"\b(?:the (?:second|third|fourth|fifth)|junior|senior)\b")
 _SAINT = re.compile(r"\bsaint\b")  # "amon ra saint brown" -> "amon ra st brown"
+# STT splits spoken initials: "a j brown" -> "aj brown" (pool norm is "aj brown").
+_SPLIT_INITIALS = re.compile(r"\b([a-z]) ([a-z])\b")
 _SPACES = re.compile(r"\s+")
 
 # Well-known nicknames / initials heard as whole utterances. Keys and values
@@ -44,6 +46,7 @@ ALIASES: dict[str, str] = {
     "jj": "justin jefferson",
     "dk": "dk metcalf",
     "dj": "dj moore",
+    "d j moore": "dj moore",  # STT often splits initials
     "obj": "odell beckham",
     "juju": "juju smithschuster",
     "ceedee": "ceedee lamb",
@@ -75,6 +78,7 @@ def _extra_normalize(norm: str) -> str:
     """Voice-specific cleanup applied on top of names.normalize_name output."""
     s = _SPOKEN_SUFFIX.sub(" ", norm)
     s = _SAINT.sub("st", s)
+    s = _SPLIT_INITIALS.sub(r"\1\2", s)
     return _SPACES.sub(" ", s).strip()
 
 

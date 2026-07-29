@@ -31,3 +31,5 @@ e2e/.last-run.json
 .DS_Store
 .idea/
 .vscode/
+*.sqlite3-shm
+*.sqlite3-wal

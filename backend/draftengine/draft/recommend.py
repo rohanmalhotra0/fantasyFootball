@@ -143,18 +143,24 @@ def _startable_remaining(remaining: pd.DataFrame, pos: str) -> int:
 
 
 def compute_needs(slots: list[dict], remaining: pd.DataFrame) -> list[str]:
-    """Empty starter slot types, scarcest position first."""
+    """Empty starter slot types, scarcest position first.
+
+    K/DST always sort last: nobody "needs" a kicker until the end, and by
+    then they are the only empty slots left anyway.
+    """
     empty_types: list[str] = []
     for s in slots:
         if s["slot"] != "BN" and s["player_name"] is None and s["slot"] not in empty_types:
             empty_types.append(s["slot"])
 
-    def scarcity(slot_type: str) -> int:
+    def scarcity(slot_type: str) -> tuple[bool, int]:
         if slot_type == "FLEX":
-            return min(_startable_remaining(remaining, p) for p in FLEX_ELIGIBLE)
-        if slot_type == "SFLEX":
-            return min(_startable_remaining(remaining, p) for p in SFLEX_ELIGIBLE)
-        return _startable_remaining(remaining, slot_type)
+            n = min(_startable_remaining(remaining, p) for p in FLEX_ELIGIBLE)
+        elif slot_type == "SFLEX":
+            n = min(_startable_remaining(remaining, p) for p in SFLEX_ELIGIBLE)
+        else:
+            n = _startable_remaining(remaining, slot_type)
+        return (slot_type in ("K", "DST"), n)
 
     return sorted(empty_types, key=scarcity)  # stable: ties keep roster order
 

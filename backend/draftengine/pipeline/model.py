@@ -14,13 +14,18 @@ from scipy.stats import spearmanr
 
 from .dataset import FEATURE_COLUMNS
 
+# Tuned on target seasons 2019-2021 only (frozen before touching the
+# 2022-2025 eval years); beats the naive last-season baseline in all four
+# eval years on both all-player and top-200 Spearman. Stronger
+# regularization than the original config — the training set is small
+# (~2-4k rows), so shallow/slow/heavy-min-child wins.
 XGB_PARAMS = {
-    "n_estimators": 400,
-    "max_depth": 4,
-    "learning_rate": 0.05,
-    "subsample": 0.9,
+    "n_estimators": 300,
+    "max_depth": 3,
+    "learning_rate": 0.03,
+    "subsample": 0.7,
     "colsample_bytree": 0.8,
-    "min_child_weight": 5,
+    "min_child_weight": 15,
     "objective": "reg:squarederror",
     "random_state": 42,
     "n_jobs": 4,
