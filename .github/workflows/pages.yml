@@ -1,0 +1,101 @@
+name: Deploy demo to GitHub Pages
+
+# Builds the read-only demo: runs the full data pipeline (nflverse stats +
+# FFC ADP fetch + model training) on the runner, snapshots every research
+# endpoint as static JSON, and publishes the frontend in read-only mode.
+#
+# One-time setup on the repo: Settings -> Pages -> Source: "GitHub Actions".
+
+on:
+  push:
+    branches: [main, claude/draftenginefantasy-football-2w20qp]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      pages_enabled: ${{ steps.pages-check.outputs.enabled }}
+    steps:
+      - name: Check whether Pages is enabled on this repo
+        id: pages-check
+        run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/pages")
+          echo "Pages API status: $code"
+          if [ "$code" = "200" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::GitHub Pages is not enabled — enable it once in Settings -> Pages -> Source: GitHub Actions, then the next push deploys automatically."
+          fi
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install backend
+        working-directory: backend
+        run: uv sync --all-extras
+
+      - name: Run data pipeline (downloads stats + ADP, trains model)
+        working-directory: backend
+        run: |
+          uv run python - <<'EOF'
+          from draftengine.jobs.refresh import run_full_refresh
+          from draftengine.pipeline import registry
+          summary = run_full_refresh()
+          registry.activate(summary["version"])
+          print("model:", summary["version"])
+          print("adp_errors:", summary["adp_errors"])
+          for m in summary["metrics"]:
+              print(m["season"], "model", round(m["spearman_model"], 3),
+                    "naive", round(m["spearman_naive"], 3),
+                    "adp", m.get("spearman_adp_drafted"))
+          EOF
+
+      - name: Export static API snapshots
+        working-directory: backend
+        run: uv run python -m draftengine.export_static ../frontend/public/api-static
+
+      - name: Build frontend (static read-only mode)
+        working-directory: frontend
+        env:
+          VITE_STATIC_API: "1"
+        run: |
+          npm ci
+          npx vite build --base=/fantasyFootball/
+          cp dist/index.html dist/404.html
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: frontend/dist
+
+  deploy:
+    needs: build
+    # Skipped (not failed) until the repo owner enables Pages once in
+    # Settings -> Pages -> Source: GitHub Actions. The workflow token is
+    # not allowed to create the site itself.
+    if: needs.build.outputs.pages_enabled == 'true'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/configure-pages@v5
+      - id: deployment
+        uses: actions/deploy-pages@v4
