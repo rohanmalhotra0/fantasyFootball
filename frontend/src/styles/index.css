@@ -2,27 +2,130 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ------------------------------------------------------------------ tokens
+   All values are space-separated RGB channels so Tailwind alpha works.
+   Dark is the default look; adding .light to <html> swaps the system.
+   Position hues follow the dataviz-validated palette steps per surface. */
+:root,
+:root.dark {
+  color-scheme: dark;
+  --de-bg: 10 15 26; /* page */
+  --de-surface: 21 27 43; /* cards */
+  --de-raised: 30 38 58; /* hover / raised chips */
+  --de-edge: 51 63 92; /* borders */
+  --de-ink: 237 241 248;
+  --de-ink-2: 178 189 210;
+  --de-ink-3: 128 140 165;
+  --de-accent: 96 165 250; /* electric blue */
+  --de-accent-2: 45 212 191; /* teal secondary */
+  --de-good: 52 211 153;
+  --de-bad: 248 113 113;
+  --de-warn: 251 191 36;
+  --de-pos-qb: 217 89 38;
+  --de-pos-rb: 25 158 112;
+  --de-pos-wr: 57 135 229;
+  --de-pos-te: 201 133 0;
+  --de-pos-k: 148 163 184;
+  --de-pos-dst: 110 168 91;
+}
+
+:root.light {
+  color-scheme: light;
+  --de-bg: 244 246 250;
+  --de-surface: 255 255 255;
+  --de-raised: 238 242 248;
+  --de-edge: 203 213 225;
+  --de-ink: 15 23 42;
+  --de-ink-2: 60 72 94;
+  --de-ink-3: 100 112 133;
+  --de-accent: 29 78 216;
+  --de-accent-2: 13 148 136;
+  --de-good: 4 120 87;
+  --de-bad: 185 28 28;
+  --de-warn: 161 98 7;
+  --de-pos-qb: 235 104 52;
+  --de-pos-rb: 27 175 122;
+  --de-pos-wr: 42 120 214;
+  --de-pos-te: 237 161 0;
+  --de-pos-k: 71 85 105;
+  --de-pos-dst: 0 131 0;
+}
+
 @layer base {
   html {
     @apply text-base antialiased;
   }
   body {
-    @apply bg-slate-50 text-slate-900;
+    @apply bg-bg text-ink;
+    background-image:
+      radial-gradient(1100px 500px at 80% -10%, rgb(var(--de-accent) / 0.14), transparent 60%),
+      radial-gradient(900px 420px at -10% 110%, rgb(var(--de-accent-2) / 0.1), transparent 55%);
+    background-attachment: fixed;
+  }
+  ::selection {
+    background: rgb(var(--de-accent) / 0.35);
   }
   /* Focus is always visible — keyboard users never lose their place. */
   :focus-visible {
-    @apply outline outline-4 outline-offset-2 outline-blue-600;
+    outline: 3px solid rgb(var(--de-accent));
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 }
 
 @layer components {
   .card {
-    @apply rounded-2xl border-2 border-slate-200 bg-white p-6 shadow-sm;
+    @apply rounded-2xl border border-edge/70 bg-surface/90 p-6 shadow-card backdrop-blur-sm;
+  }
+  .card-hero {
+    @apply card relative overflow-hidden;
+  }
+  .card-hero::before {
+    content: '';
+    @apply pointer-events-none absolute inset-x-0 top-0 h-[3px];
+    background: linear-gradient(90deg, rgb(var(--de-accent)), rgb(var(--de-accent-2)));
   }
   .btn-primary {
-    @apply inline-flex items-center gap-2 rounded-xl bg-blue-700 px-6 py-3 text-lg font-bold text-white hover:bg-blue-800 disabled:opacity-40;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-6 py-3 text-lg font-bold text-bg shadow-glow-sm transition-transform hover:scale-[1.02] hover:shadow-glow active:scale-[0.99] disabled:opacity-40 disabled:shadow-none;
   }
   .btn-secondary {
-    @apply inline-flex items-center gap-2 rounded-xl border-2 border-slate-300 bg-white px-5 py-2.5 font-bold text-slate-800 hover:bg-slate-100 disabled:opacity-40;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border-2 border-edge bg-raised/60 px-5 py-2.5 font-bold text-ink transition-colors hover:border-accent/60 hover:bg-raised disabled:opacity-40;
+  }
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-base font-bold;
+  }
+  .stat-number {
+    @apply font-display text-4xl font-bold tabular-nums tracking-tight;
+  }
+  .section-title {
+    @apply font-display text-xl font-bold tracking-tight;
+  }
+  .skeleton {
+    @apply animate-shimmer rounded-xl;
+    background: linear-gradient(
+      100deg,
+      rgb(var(--de-surface)) 40%,
+      rgb(var(--de-raised)) 50%,
+      rgb(var(--de-surface)) 60%
+    );
+    background-size: 200% 100%;
+  }
+  .table-shell th {
+    @apply sticky top-0 z-10 bg-surface/95 py-3 pr-4 text-left text-base font-bold text-ink-2 backdrop-blur-sm;
+  }
+  .table-shell td {
+    @apply border-t border-edge/40 py-3 pr-4;
+  }
+  .table-shell tbody tr {
+    @apply transition-colors hover:bg-raised/50;
   }
 }

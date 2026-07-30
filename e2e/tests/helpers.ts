@@ -419,13 +419,18 @@ export async function mockDraftRunner(
         .toBe(made)
     }
 
-    if (made % checkpointEvery === 0 || made === totalPicks) {
+    // Grid checkpoints only while the draft is live: at totalPicks the room
+    // correctly replaces the tab layout with the graded report view, so the
+    // final reconciliation is API-side (the spec then asserts the report).
+    if (made % checkpointEvery === 0 && made < totalPicks) {
       state = await assertBoardInSync(page, request, draftId)
       await assertMyTeamPanel(page, state)
     }
   }
 
-  return getDraftState(request, draftId)
+  const final = await getDraftState(request, draftId)
+  expect(final.picks.length, 'every pick must be persisted server-side').toBe(totalPicks)
+  return final
 }
 
 // ---------------------------------------------------------------------------

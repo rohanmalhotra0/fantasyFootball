@@ -1,6 +1,6 @@
 // Draft Room. No :draftId -> lobby (resume or start a draft). With an id
 // -> the live room: WS-synced state in the zustand store, one primary
-// action at a time, calm big layout.
+// action at a time, calm big layout with broadcast-booth styling.
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
@@ -10,6 +10,7 @@ import NextUpPanel from '../components/draft/NextUpPanel'
 import OnClockBanner from '../components/draft/OnClockBanner'
 import OpponentTracker from '../components/draft/OpponentTracker'
 import PickSearch from '../components/draft/PickSearch'
+import PickTicker from '../components/draft/PickTicker'
 import PickTimer from '../components/draft/PickTimer'
 import ReportView from '../components/draft/ReportView'
 import { api } from '../lib/api'
@@ -24,6 +25,17 @@ import type {
 } from '../lib/types'
 import { connectDraft } from '../lib/ws'
 
+function ErrorAlert({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      role="alert"
+      className="flex flex-wrap items-center justify-between gap-3 rounded-xl border-2 border-bad/50 bg-bad/10 p-4"
+    >
+      {children}
+    </div>
+  )
+}
+
 // ---------------------------------------------------------------- lobby
 
 function draftProgressLabel(d: DraftListItem): string {
@@ -34,9 +46,16 @@ function draftProgressLabel(d: DraftListItem): string {
 function Lobby() {
   const navigate = useNavigate()
   const [drafts, setDrafts] = useState<DraftListItem[] | null>(null)
+  const [showAll, setShowAll] = useState(false)
   const [settings, setSettings] = useState<SettingsResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
+
+  // Route announcement for screen readers + tab identity (WCAG 2.4.2).
+  // The live Room's title is owned by OnClockBanner (pick-by-pick).
+  useEffect(() => {
+    document.title = 'Draft Room — DraftEngine'
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -81,26 +100,29 @@ function Lobby() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <h1 className="text-3xl font-bold">
+      <h1 className="animate-slide-up font-display text-3xl font-bold tracking-tight">
         <span aria-hidden="true">🎯</span> Draft Room
       </h1>
 
       {error && (
-        <div role="alert" className="rounded-xl border-2 border-red-300 bg-red-50 p-4">
-          <p className="font-bold text-red-900">
+        <ErrorAlert>
+          <p className="font-bold text-bad">
             <span aria-hidden="true">⚠️</span> {error}
           </p>
-        </div>
+        </ErrorAlert>
       )}
 
-      <section className="card space-y-4 border-blue-200 bg-blue-50" aria-label="Start a new draft">
-        <h2 className="text-xl font-bold">New draft</h2>
-        <p className="text-lg">
-          League: <span className="font-bold">{summary ?? 'loading settings…'}</span>
+      <section className="card-hero animate-slide-up space-y-4" aria-label="Start a new draft">
+        <p className="font-bold uppercase tracking-[0.14em] text-ink-3">
+          <span aria-hidden="true">🏟️</span> Tonight's broadcast
         </p>
-        <p>
+        <h2 className="font-display text-2xl font-bold tracking-tight">New draft</h2>
+        <p className="text-lg">
+          League: <span className="font-bold text-accent-2">{summary ?? 'loading settings…'}</span>
+        </p>
+        <p className="text-ink-2">
           Wrong setup?{' '}
-          <Link to="/settings" className="font-bold text-blue-800 underline">
+          <Link to="/settings" className="font-bold text-accent underline">
             Change it first
           </Link>{' '}
           — settings are frozen once the draft starts.
@@ -117,20 +139,31 @@ function Lobby() {
       </section>
 
       <section className="space-y-3" aria-label="Previous drafts">
-        <h2 className="text-xl font-bold">Previous drafts</h2>
+        <h2 className="section-title">Previous drafts</h2>
         {drafts == null ? (
-          <p role="status" className="text-slate-600">
+          <p role="status" className="text-ink-3">
             Loading drafts…
           </p>
         ) : drafts.length === 0 ? (
-          <p className="card text-slate-600">No drafts yet — start your first one above.</p>
+          <p className="card text-ink-3">No drafts yet — start your first one above.</p>
         ) : (
           <ul className="space-y-3">
-            {drafts.map((d) => (
-              <li key={d.id} className="card flex flex-wrap items-center gap-4">
+            {(showAll ? drafts : drafts.slice(0, 6)).map((d) => (
+              <li key={d.id} className="card animate-slide-up flex flex-wrap items-center gap-4">
                 <div>
-                  <p className="text-lg font-bold">Draft #{d.id}</p>
-                  <p className="text-slate-600">
+                  <p className="flex items-center gap-2 font-display text-lg font-bold">
+                    Draft #{d.id}
+                    {d.status === 'complete' ? (
+                      <span className="chip border border-good/50 bg-good/10 text-base text-good">
+                        <span aria-hidden="true">✓</span> complete
+                      </span>
+                    ) : (
+                      <span className="chip border border-accent/50 bg-accent/10 text-base text-accent">
+                        <span aria-hidden="true">●</span> live
+                      </span>
+                    )}
+                  </p>
+                  <p className="text-ink-2">
                     {d.teams} teams · {d.rounds} rounds ·{' '}
                     {d.status === 'complete' ? 'complete' : draftProgressLabel(d)}
                   </p>
@@ -155,6 +188,11 @@ function Lobby() {
             ))}
           </ul>
         )}
+        {drafts != null && drafts.length > 6 && !showAll && (
+          <button type="button" className="btn-secondary" onClick={() => setShowAll(true)}>
+            <span aria-hidden="true">▾</span> Show all {drafts.length} drafts
+          </button>
+        )}
       </section>
     </div>
   )
@@ -170,16 +208,25 @@ const TABS = [
 
 type TabId = (typeof TABS)[number]['id']
 
+function Kbd({ children }: { children: React.ReactNode }) {
+  return (
+    <kbd className="rounded-md border border-edge bg-raised px-1.5 py-0.5 font-mono text-sm font-bold text-ink-2">
+      {children}
+    </kbd>
+  )
+}
+
 function RoomSkeleton() {
   return (
     <div aria-busy="true" aria-label="Loading draft room" className="space-y-6">
-      <div className="card h-32 animate-pulse bg-slate-100" />
-      <div className="grid gap-6 lg:grid-cols-[1fr_22rem]">
+      <div className="skeleton h-40" />
+      <div className="skeleton h-10" />
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_22rem]">
         <div className="space-y-4">
-          <div className="card h-44 animate-pulse bg-slate-100" />
-          <div className="card h-44 animate-pulse bg-slate-100" />
+          <div className="skeleton h-44" />
+          <div className="skeleton h-44" />
         </div>
-        <div className="card h-80 animate-pulse bg-slate-100" />
+        <div className="skeleton h-80" />
       </div>
     </div>
   )
@@ -272,6 +319,66 @@ function Room({ draftId }: { draftId: number }) {
     }
   }, [])
 
+  // Keyboard shortcuts (documented in the Keys hint row). The listener
+  // ignores typing contexts so search inputs keep every letter.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey || e.altKey) return
+      const target = e.target as HTMLElement | null
+      if (
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT' ||
+          target.isContentEditable)
+      ) {
+        return
+      }
+      const store = useDraftStore.getState()
+      const s = store.state
+      if (!s || s.status === 'complete' || editing) return
+      switch (e.key.toLowerCase()) {
+        case 'u':
+          if (s.picks.length > 0 && !busy) {
+            e.preventDefault()
+            void runBusy(() => store.undoPick())
+          }
+          break
+        case '/': {
+          e.preventDefault()
+          setTab('next')
+          // The Next panel may not be rendered yet — retry across a few
+          // frames until its search input exists, then focus it.
+          const tryFocus = (attempt: number) => {
+            const input = document.querySelector<HTMLInputElement>(
+              '[data-testid="pick-search-input"]',
+            )
+            if (input) {
+              const details = input.closest('details')
+              if (details) details.open = true
+              input.focus()
+              return
+            }
+            if (attempt < 10) requestAnimationFrame(() => tryFocus(attempt + 1))
+          }
+          tryFocus(0)
+          break
+        }
+        case 'b':
+          setTab('board')
+          break
+        case 'n':
+          setTab('next')
+          break
+        case 't':
+          setTab('teams')
+          break
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [busy, editing, runBusy])
+
   const handleDraft = (rec: Recommendation) =>
     void runBusy(() =>
       useDraftStore.getState().makePick({ player_id: rec.player_id, source: 'manual' }),
@@ -311,12 +418,12 @@ function Room({ draftId }: { draftId: number }) {
 
   return (
     <div className="space-y-6">
+      {/* The banner's "Pick N" line is visually the headline; this gives the
+          page its one h1 for the heading outline (WCAG 1.3.1 / 2.4.6). */}
+      <h1 className="sr-only">Live draft room — draft #{draftId}</h1>
       {error && (
-        <div
-          role="alert"
-          className="flex flex-wrap items-center justify-between gap-3 rounded-xl border-2 border-red-300 bg-red-50 p-4"
-        >
-          <p className="text-lg font-bold text-red-900">
+        <ErrorAlert>
+          <p className="text-lg font-bold text-bad">
             <span aria-hidden="true">⚠️</span> {error}
           </p>
           <button
@@ -326,20 +433,24 @@ function Room({ draftId }: { draftId: number }) {
           >
             <span aria-hidden="true">✕</span> Dismiss
           </button>
-        </div>
+        </ErrorAlert>
       )}
 
-      <div className="flex flex-col gap-4 xl:flex-row xl:items-stretch">
-        <OnClockBanner state={state} connection={connection} />
-        {!complete && <PickTimer resetKey={state.current_overall ?? 'done'} />}
-      </div>
+      <OnClockBanner
+        state={state}
+        connection={connection}
+        timer={
+          !complete ? <PickTimer resetKey={state.current_overall ?? 'done'} /> : null
+        }
+      />
+      <PickTicker state={state} />
 
       {complete ? (
         report ? (
           <ReportView report={report} onNewDraft={() => navigate('/draft')} />
         ) : reportError ? (
           <div role="alert" className="card space-y-3">
-            <p className="text-lg font-bold text-red-900">
+            <p className="text-lg font-bold text-bad">
               <span aria-hidden="true">⚠️</span> {reportError}
             </p>
             <button type="button" className="btn-secondary" onClick={() => navigate('/draft')}>
@@ -347,35 +458,43 @@ function Room({ draftId }: { draftId: number }) {
             </button>
           </div>
         ) : (
-          <p role="status" className="card text-xl font-bold text-slate-600">
+          <p role="status" className="card text-xl font-bold text-ink-2">
             Grading your draft…
           </p>
         )
       ) : (
-        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
           <div className="space-y-4">
-            <div
-              role="tablist"
-              aria-label="Draft views"
-              className="inline-flex gap-1 rounded-xl border-2 border-slate-200 bg-white p-1"
-            >
-              {TABS.map((t) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  role="tab"
-                  id={`tab-${t.id}`}
-                  data-testid={`tab-${t.id}`}
-                  aria-selected={tab === t.id}
-                  aria-controls={`panel-${t.id}`}
-                  className={`flex items-center gap-2 rounded-lg px-4 py-2 text-lg font-bold ${
-                    tab === t.id ? 'bg-blue-700 text-white' : 'text-slate-700 hover:bg-slate-100'
-                  }`}
-                  onClick={() => setTab(t.id)}
-                >
-                  <span aria-hidden="true">{t.icon}</span> {t.label}
-                </button>
-              ))}
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div
+                role="tablist"
+                aria-label="Draft views"
+                className="inline-flex max-w-full gap-1 overflow-x-auto rounded-xl border border-edge bg-surface/80 p-1 backdrop-blur-sm"
+              >
+                {TABS.map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    role="tab"
+                    id={`tab-${t.id}`}
+                    data-testid={`tab-${t.id}`}
+                    aria-selected={tab === t.id}
+                    aria-controls={`panel-${t.id}`}
+                    className={`flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-base font-bold transition-colors sm:px-4 sm:text-lg ${
+                      tab === t.id
+                        ? 'bg-accent text-bg shadow-glow-sm'
+                        : 'text-ink-2 hover:bg-raised hover:text-ink'
+                    }`}
+                    onClick={() => setTab(t.id)}
+                  >
+                    <span aria-hidden="true">{t.icon}</span> {t.label}
+                  </button>
+                ))}
+              </div>
+              <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-base text-ink-3">
+                Keys: <Kbd>U</Kbd> undo · <Kbd>/</Kbd> search · <Kbd>B</Kbd> board · <Kbd>N</Kbd>{' '}
+                next · <Kbd>T</Kbd> teams
+              </p>
             </div>
 
             <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`}>
@@ -410,14 +529,14 @@ function Room({ draftId }: { draftId: number }) {
           role="dialog"
           aria-modal="true"
           aria-label={`Edit pick ${editing.overall}`}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-bg/80 p-4 backdrop-blur-sm"
           onKeyDown={(e) => {
             if (e.key === 'Escape') setEditing(null)
           }}
         >
           <div className="card max-h-[85vh] w-full max-w-2xl space-y-4 overflow-y-auto">
             <div className="flex items-start justify-between gap-4">
-              <h2 className="text-xl font-bold">
+              <h2 className="section-title">
                 <span aria-hidden="true">✏️</span> Edit pick #{editing.overall} —{' '}
                 {editing.player_name}
               </h2>

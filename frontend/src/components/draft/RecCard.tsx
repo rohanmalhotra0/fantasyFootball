@@ -3,26 +3,28 @@
 
 import type { Recommendation } from '../../lib/types'
 
-const POS_COLORS: Record<string, string> = {
-  QB: 'bg-pos-qb',
-  RB: 'bg-pos-rb',
-  WR: 'bg-pos-wr',
-  TE: 'bg-pos-te',
-  K: 'bg-pos-k',
-  DST: 'bg-pos-dst',
+/** Position identity recipe: tinted bg + colored edge, ink text on top so
+ *  the label reads on both themes (color is identity, text is meaning). */
+const POS_STYLES: Record<string, string> = {
+  QB: 'bg-pos-qb/20 border-pos-qb/60',
+  RB: 'bg-pos-rb/20 border-pos-rb/60',
+  WR: 'bg-pos-wr/20 border-pos-wr/60',
+  TE: 'bg-pos-te/20 border-pos-te/60',
+  K: 'bg-pos-k/20 border-pos-k/60',
+  DST: 'bg-pos-dst/20 border-pos-dst/60',
 }
 
 /** Tiny local position chip (the board's PositionChip has a different
  *  owner). Position text is always inside the chip — color is never the
  *  only signal. */
 export function PosChip({ position, team }: { position: string; team?: string | null }) {
-  const bg = POS_COLORS[position] ?? 'bg-slate-600'
+  const cls = POS_STYLES[position] ?? 'bg-raised border-edge'
   return (
     <span
-      className={`inline-flex items-center gap-1 whitespace-nowrap rounded-lg px-2 py-0.5 text-base font-bold text-white ${bg}`}
+      className={`inline-flex items-center gap-1 whitespace-nowrap rounded-lg border px-2 py-0.5 text-base font-bold text-ink ${cls}`}
     >
       {position}
-      {team ? <span className="font-normal opacity-90">· {team}</span> : null}
+      {team ? <span className="font-normal text-ink-2">· {team}</span> : null}
     </span>
   )
 }
@@ -38,24 +40,31 @@ interface RecCardProps {
 export default function RecCard({ rec, index, myTurn, onDraft, busy = false }: RecCardProps) {
   const survivalPct = rec.survival_prob == null ? null : Math.round(rec.survival_prob * 100)
   const isTop = index === 0
+  const primary = isTop && myTurn
 
   return (
     <article
       data-testid={`rec-card-${index}`}
-      className={`card space-y-3 ${isTop && myTurn ? 'border-4 border-blue-600 bg-blue-50' : ''}`}
+      className={`card animate-slide-up space-y-3 ${
+        primary ? 'scale-[1.01] border-accent/70 shadow-glow' : ''
+      }`}
       aria-label={`Recommendation ${index + 1}: ${rec.name}`}
     >
       <div className="flex flex-wrap items-center gap-3">
         <span
           aria-hidden="true"
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-800 text-xl font-bold text-white"
+          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl font-display text-xl font-bold ${
+            isTop ? 'bg-accent text-bg shadow-glow-sm' : 'border border-edge bg-raised text-ink-2'
+          }`}
         >
           {index + 1}
         </span>
-        <span className={`font-bold ${isTop ? 'text-2xl' : 'text-xl'}`}>{rec.name}</span>
+        <span className={`font-display font-bold tracking-tight ${isTop ? 'text-2xl' : 'text-xl'}`}>
+          {rec.name}
+        </span>
         <PosChip position={rec.position} team={rec.team} />
         {rec.tier != null && (
-          <span className="whitespace-nowrap rounded-lg border-2 border-slate-400 bg-slate-100 px-2 py-0.5 font-bold text-slate-800">
+          <span className="chip whitespace-nowrap border border-edge bg-raised/70 text-ink-2">
             Tier {rec.tier}
           </span>
         )}
@@ -66,14 +75,14 @@ export default function RecCard({ rec, index, myTurn, onDraft, busy = false }: R
           {rec.projected_points != null ? `${Math.round(rec.projected_points)} pts` : 'No projection'}
         </span>
         {rec.vorp != null && (
-          <span className="text-slate-700">
+          <span className="text-ink-2">
             {' '}
             · VORP {rec.vorp >= 0 ? '+' : ''}
             {Math.round(rec.vorp)}
           </span>
         )}
         {rec.risk_flag && (
-          <span className="ml-2 whitespace-nowrap rounded-lg bg-amber-100 px-2 py-0.5 font-bold text-amber-900">
+          <span className="chip ml-2 whitespace-nowrap border border-warn/50 bg-warn/10 text-warn">
             <span aria-hidden="true">⚠️</span> thin sample
           </span>
         )}
@@ -81,19 +90,29 @@ export default function RecCard({ rec, index, myTurn, onDraft, busy = false }: R
 
       {survivalPct != null && (
         <div>
-          <div className="h-3 w-full overflow-hidden rounded-full bg-slate-200" aria-hidden="true">
+          <div className="flex items-baseline justify-between gap-3">
+            <span className="text-sm font-bold uppercase tracking-[0.14em] text-ink-3">
+              Survival odds
+            </span>
+            <span
+              className={`font-display text-lg font-bold tabular-nums ${
+                survivalPct >= 50 ? 'text-good' : 'text-bad'
+              }`}
+            >
+              {survivalPct}%
+            </span>
+          </div>
+          <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-raised" aria-hidden="true">
             <div
-              className={`h-full rounded-full ${survivalPct >= 50 ? 'bg-emerald-600' : 'bg-red-500'}`}
+              className={`h-full rounded-full ${survivalPct >= 50 ? 'bg-good' : 'bg-bad'}`}
               style={{ width: `${survivalPct}%` }}
             />
           </div>
-          <p className="mt-1 text-base text-slate-700">
-            {survivalPct}% likely available next turn
-          </p>
+          <p className="mt-1 text-base text-ink-2">{survivalPct}% likely available next turn</p>
         </div>
       )}
 
-      <p className="text-lg font-bold">
+      <p className="text-lg font-bold text-accent-2">
         <span aria-hidden="true">💡</span> {rec.reason}
       </p>
 
@@ -101,7 +120,7 @@ export default function RecCard({ rec, index, myTurn, onDraft, busy = false }: R
         (isTop ? (
           <button
             type="button"
-            className="btn-primary w-full justify-center text-2xl"
+            className="btn-primary w-full justify-center py-4 text-2xl"
             data-testid="draft-best-button"
             disabled={busy}
             onClick={() => onDraft(rec)}

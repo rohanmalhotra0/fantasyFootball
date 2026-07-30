@@ -143,6 +143,21 @@ describe('Dashboard with full data', () => {
     expect(screen.getByTestId('enter-draft-room')).toHaveTextContent('Enter Draft Room')
     expect(screen.getByText('Data ready')).toBeInTheDocument()
   })
+
+  it('renders hero stat tiles: mean Spearman, ADP delta, seasons, players, freshness', async () => {
+    mockDashboardFetch(FULL_RESPONSE)
+    renderDashboard()
+    // Mean model Spearman over 2023 (0.71) and 2024 (0.55).
+    expect(await screen.findByText('0.63')).toBeInTheDocument()
+    // Delta vs ADP on the drafted subset: 0.71 - 0.48 in the only ADP year.
+    expect(screen.getByText('beats ADP by')).toBeInTheDocument()
+    expect(screen.getByText('+0.23')).toBeInTheDocument()
+    // Seasons of data (1999-2025 nflverse history) and players modeled.
+    expect(screen.getByText('27')).toBeInTheDocument()
+    expect(screen.getByText('300')).toBeInTheDocument()
+    // Refreshed 3 hours ago -> inside the fresh window.
+    expect(screen.getByText('fresh')).toBeInTheDocument()
+  })
 })
 
 describe('Dashboard with empty/not-ready data', () => {
@@ -157,6 +172,9 @@ describe('Dashboard with empty/not-ready data', () => {
     expect(
       screen.getByText('No validation yet — run a refresh from the Data page.'),
     ).toBeInTheDocument()
+    // Hero tiles degrade honestly: no refresh -> stale, no validation -> placeholder.
+    expect(screen.getByText('stale')).toBeInTheDocument()
+    expect(screen.getByText('no validation yet')).toBeInTheDocument()
   })
 })
 

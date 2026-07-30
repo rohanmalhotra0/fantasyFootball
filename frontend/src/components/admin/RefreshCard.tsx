@@ -3,12 +3,13 @@ import { ApiError, api } from '../../lib/api'
 import type { RefreshStatus } from '../../lib/types'
 
 /**
- * One-click "refresh data & retrain" card.
+ * One-click "refresh data & retrain" mission-control card.
  *
  * A refresh runs server-side in the background; while it runs we poll
- * /api/admin/refresh/status every 2 seconds. The result is only ever a
- * STAGED model — the success panel points the user at the model table
- * below to compare metrics and activate explicitly. Nothing is silent.
+ * /api/admin/refresh/status every 2 seconds and show a shimmer progress
+ * strip. The result is only ever a STAGED model — the success panel points
+ * the user at the model table below to compare metrics and activate
+ * explicitly. Nothing is silent.
  */
 
 const POLL_MS = 2000
@@ -21,6 +22,22 @@ export function clockTime(iso: string | null | undefined): string {
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return iso
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
+/** Indeterminate accent shimmer strip (decorative — the status text carries the state). */
+function ShimmerStrip() {
+  return (
+    <div aria-hidden="true" className="h-2 overflow-hidden rounded-full bg-raised">
+      <div
+        className="h-full w-full animate-shimmer rounded-full"
+        style={{
+          backgroundImage:
+            'linear-gradient(90deg, rgb(var(--de-accent) / 0.15) 35%, rgb(var(--de-accent)) 50%, rgb(var(--de-accent) / 0.15) 65%)',
+          backgroundSize: '200% 100%',
+        }}
+      />
+    </div>
+  )
 }
 
 export default function RefreshCard({ onFinished }: { onFinished?: () => void }) {
@@ -106,20 +123,20 @@ export default function RefreshCard({ onFinished }: { onFinished?: () => void })
   const errorText = status?.error ?? startError ?? 'Something went wrong.'
 
   return (
-    <section className="card space-y-4" aria-label="Data refresh">
-      <h2 className="text-xl font-bold">
+    <section className="card animate-slide-up space-y-4" aria-label="Data refresh">
+      <h2 className="section-title">
         <span aria-hidden="true">🔄</span> Refresh
       </h2>
 
-      <p className="text-slate-600">
+      <p className="text-ink-2">
         Downloads latest stats + ADP, rebuilds the dataset, trains a new model. The new model is{' '}
-        <strong>STAGED</strong> — nothing changes until you activate it below.
+        <strong className="text-ink">STAGED</strong> — nothing changes until you activate it below.
       </p>
 
       <button
         type="button"
         data-testid="refresh-button"
-        className="btn-primary text-xl"
+        className="btn-primary px-8 py-4 text-xl"
         disabled={running}
         onClick={() => void start()}
       >
@@ -130,31 +147,37 @@ export default function RefreshCard({ onFinished }: { onFinished?: () => void })
         <p
           role="status"
           data-testid="refresh-notice"
-          className="rounded-xl border-2 border-amber-300 bg-amber-50 p-3 font-bold text-amber-900"
+          className="rounded-xl border-2 border-warn/60 bg-warn/10 p-3 font-bold"
         >
           <span aria-hidden="true">⏳</span> {notice}
         </p>
       )}
 
       {running && (
-        <div role="status" className="space-y-2 rounded-xl border-2 border-blue-200 bg-blue-50 p-4">
-          <p data-testid="refresh-status" className="animate-pulse text-lg font-bold text-blue-900">
-            <span aria-hidden="true">⏳</span> Refreshing — started {clockTime(status?.started_at)}
+        <div
+          role="status"
+          className="space-y-3 rounded-xl border border-accent/40 bg-accent/10 p-4"
+        >
+          <p data-testid="refresh-status" className="flex items-center gap-3 text-lg font-bold">
+            <span aria-hidden="true" className="relative flex h-3 w-3 shrink-0">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-60" />
+              <span className="relative inline-flex h-3 w-3 rounded-full bg-accent" />
+            </span>
+            Refreshing — started {clockTime(status?.started_at)}
           </p>
-          <p className="text-blue-900">
+          <ShimmerStrip />
+          <p className="text-ink-2">
             Usually a few minutes. You can leave this page — the refresh keeps going.
           </p>
         </div>
       )}
 
       {phase === 'done' && (
-        <div
-          role="status"
-          data-testid="refresh-done"
-          className="rounded-xl border-2 border-green-600 bg-green-50 p-4"
-        >
-          <p className="text-lg font-bold text-green-900">
-            New model {status?.staged_version} staged ✓ — compare below and activate when happy
+        <div role="status" data-testid="refresh-done" className="card-hero space-y-1 p-4">
+          <p className="text-lg font-bold">
+            <span aria-hidden="true">🏁</span> New model{' '}
+            <span className="font-mono text-accent">{status?.staged_version}</span> staged ✓ —
+            compare below and activate when happy
           </p>
         </div>
       )}
@@ -163,12 +186,12 @@ export default function RefreshCard({ onFinished }: { onFinished?: () => void })
         <div
           role="alert"
           data-testid="refresh-error"
-          className="space-y-3 rounded-xl border-2 border-red-400 bg-red-50 p-4"
+          className="space-y-3 rounded-xl border-2 border-bad/60 bg-bad/10 p-4"
         >
-          <p className="text-lg font-bold text-red-900">
+          <p className="text-lg font-bold">
             <span aria-hidden="true">⚠️</span> Refresh failed
           </p>
-          <p className="text-red-900">{errorText}</p>
+          <p className="text-ink-2">{errorText}</p>
           <button
             type="button"
             data-testid="refresh-retry"

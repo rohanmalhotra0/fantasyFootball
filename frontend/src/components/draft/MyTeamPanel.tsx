@@ -43,41 +43,46 @@ export default function MyTeamPanel({
   const diff = outlook && leagueAvg != null ? Math.round(outlook.projected_points - leagueAvg) : null
 
   return (
-    <section data-testid="my-team-panel" aria-label="My team" className="card space-y-4">
-      <h2 className="text-2xl font-bold">
+    <section
+      data-testid="my-team-panel"
+      aria-label="My team"
+      className="card animate-slide-up space-y-4"
+    >
+      <h2 className="section-title text-2xl">
         <span aria-hidden="true">🧢</span> My team
       </h2>
 
       {outlook == null ? (
-        <p className="text-slate-600">Loading your roster…</p>
+        <p className="text-ink-3">Loading your roster…</p>
       ) : (
         <>
-          <p className="text-lg">
-            Projected: <span className="font-bold">{Math.round(outlook.projected_points)} pts</span>
-          </p>
-          {diff != null && (
-            <p
-              className={`text-lg font-bold ${diff >= 0 ? 'text-green-800' : 'text-red-800'}`}
-            >
-              {diff >= 0 ? (
-                <>
-                  <span aria-hidden="true">▲</span> {diff} pts above league average
-                </>
-              ) : (
-                <>
-                  <span aria-hidden="true">▼</span> {Math.abs(diff)} pts below league average
-                </>
-              )}
+          <div>
+            <p className="text-sm font-bold uppercase tracking-[0.14em] text-ink-3">
+              Projected points
             </p>
-          )}
+            <p className="stat-number">{Math.round(outlook.projected_points)}</p>
+            {diff != null && (
+              <p className={`text-lg font-bold ${diff >= 0 ? 'text-good' : 'text-bad'}`}>
+                {diff >= 0 ? (
+                  <>
+                    <span aria-hidden="true">▲</span> {diff} pts above league average
+                  </>
+                ) : (
+                  <>
+                    <span aria-hidden="true">▼</span> {Math.abs(diff)} pts below league average
+                  </>
+                )}
+              </p>
+            )}
+          </div>
           {outlook.needs.length > 0 && (
             <p className="flex flex-wrap gap-2" aria-label={`Needs: ${outlook.needs.join(', ')}`}>
               {outlook.needs.map((pos) => (
                 <span
                   key={pos}
-                  className="whitespace-nowrap rounded-lg border-2 border-amber-400 bg-amber-50 px-2 py-0.5 font-bold text-amber-900"
+                  className="chip whitespace-nowrap border border-warn/50 bg-warn/10 text-warn"
                 >
-                  needs {pos}
+                  <span aria-hidden="true">◔</span> needs {pos}
                 </span>
               ))}
             </p>
@@ -86,9 +91,15 @@ export default function MyTeamPanel({
             {outlook.slots.map((slot, i) => (
               <li
                 key={`${slot.slot}-${i}`}
-                className="flex items-center gap-3 rounded-lg bg-slate-50 px-3 py-1.5"
+                className={`flex items-center gap-3 rounded-lg px-3 py-1.5 ${
+                  slot.player_name
+                    ? 'border border-edge/50 bg-raised/60'
+                    : 'border border-dashed border-edge/80 text-ink-3'
+                }`}
               >
-                <span className="w-16 shrink-0 font-bold text-slate-600">{labels[i]}</span>
+                <span className="w-16 shrink-0 font-mono text-base font-bold text-ink-3">
+                  {labels[i]}
+                </span>
                 {slot.player_name ? (
                   <>
                     <span className="truncate font-bold" title={slot.player_name}>
@@ -97,7 +108,7 @@ export default function MyTeamPanel({
                     {slot.position && <PosChip position={slot.position} />}
                   </>
                 ) : (
-                  <span className="text-slate-400">— open</span>
+                  <span>— open</span>
                 )}
               </li>
             ))}

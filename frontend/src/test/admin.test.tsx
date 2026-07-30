@@ -194,9 +194,13 @@ describe('ModelTable', () => {
     render(<Admin />)
 
     await user.click(await screen.findByTestId('activate-v20250801_010203'))
-    expect(screen.getByTestId('activate-comparison')).toHaveTextContent(
-      'New: 0.712 · Current: 0.705 — small improvement',
-    )
+    // Stat tiles carry both means; the plain-words verdict sits beside them.
+    const comparison = screen.getByTestId('activate-comparison')
+    expect(comparison).toHaveTextContent('New')
+    expect(comparison).toHaveTextContent('0.712')
+    expect(comparison).toHaveTextContent('Current')
+    expect(comparison).toHaveTextContent('0.705')
+    expect(comparison).toHaveTextContent(/small improvement/i)
     // nothing activated yet
     expect(callsTo(mock, '/api/admin/models/v20250801_010203/activate', 'POST')).toBe(0)
 

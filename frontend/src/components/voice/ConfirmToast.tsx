@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import type { VoiceCandidate } from '../../lib/types'
 
 export type ConfirmToastMode = 'auto' | 'confirm'
@@ -60,16 +61,18 @@ export default function ConfirmToast({
 
   const barPercent = Math.max(0, Math.min(100, (remaining / seconds) * 100))
 
-  return (
+  // Portaled to <body>: ancestors with backdrop-filter/transform (e.g. .card,
+  // animate-slide-up) would otherwise re-anchor position:fixed to themselves.
+  return createPortal(
     <div
       data-testid="voice-toast"
       role="alert"
       className="fixed bottom-6 left-1/2 z-50 w-[min(92vw,36rem)] -translate-x-1/2"
     >
-      <div className="card space-y-4 border-blue-300 shadow-xl">
+      <div className="card-hero space-y-4 shadow-glow">
         {error !== null ? (
           <>
-            <p className="text-xl font-bold text-amber-900">
+            <p className="text-xl font-bold text-warn">
               <span aria-hidden="true">⚠️</span> Pick not made
             </p>
             <p data-testid="voice-toast-error" className="text-lg">
@@ -87,18 +90,18 @@ export default function ConfirmToast({
           </>
         ) : (
           <>
-            <p className="text-2xl font-bold">
+            <p className="font-display text-2xl font-bold">
               &ldquo;{best.name}&rdquo; <span aria-hidden="true">→</span>
               <span className="sr-only">to</span> {teamLabel}
             </p>
-            <p className="text-lg text-slate-600">{reason}</p>
+            <p className="text-lg text-ink-2">{reason}</p>
             {mode === 'auto' ? (
               <>
                 <div className="flex items-center gap-4" aria-hidden="true">
-                  <span className="text-3xl font-bold tabular-nums">{remaining}</span>
-                  <div className="h-4 flex-1 overflow-hidden rounded-full bg-slate-200">
+                  <span className="stat-number w-14 text-center text-accent">{remaining}</span>
+                  <div className="h-4 flex-1 overflow-hidden rounded-full bg-raised">
                     <div
-                      className="h-full rounded-full bg-blue-600 transition-all duration-1000 ease-linear"
+                      className="h-full rounded-full bg-accent transition-all duration-1000 ease-linear"
                       style={{ width: `${barPercent}%` }}
                     />
                   </div>
@@ -139,7 +142,7 @@ export default function ConfirmToast({
                 </button>
                 {alternatives.length > 0 && (
                   <div className="space-y-2">
-                    <p className="text-base font-bold text-slate-600">
+                    <p className="text-base font-bold text-ink-2">
                       Not right? Tap the correct player:
                     </p>
                     <ul className="space-y-2">
@@ -172,6 +175,7 @@ export default function ConfirmToast({
           </>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

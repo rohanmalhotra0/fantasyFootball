@@ -1,17 +1,28 @@
 // Big Board: full player rankings with search, filters, and per-player
 // edits (pin / hide / manual rank). The server is the source of truth —
-// every edit swaps in the full response from api.editPlayer.
+// every edit swaps in the full response from api.editPlayer. Clicking a
+// player row opens the career drawer.
 
 import Fuse from 'fuse.js'
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import BoardTable from '../components/board/BoardTable'
+import PlayerDrawer from '../components/board/PlayerDrawer'
 import PositionChip from '../components/board/PositionChip'
 import { api } from '../lib/api'
-import type { PlayerEditRequest, RankingsResponse } from '../lib/types'
+import type { BoardPlayer, PlayerEditRequest, RankingsResponse } from '../lib/types'
 
 const POSITIONS = ['QB', 'RB', 'WR', 'TE', 'K', 'DST']
 const VALUE_GAP_MIN = 5
+
+/** Filter chips share one look: quiet at rest, accent glow when pressed. */
+function filterChipClass(active: boolean): string {
+  return `rounded-xl border-2 px-4 py-2 text-lg font-bold transition-colors ${
+    active
+      ? 'border-accent bg-accent/15 text-accent shadow-glow-sm'
+      : 'border-edge bg-raised/60 text-ink-2 hover:border-accent/50 hover:text-ink'
+  }`
+}
 
 export default function Rankings() {
   const [data, setData] = useState<RankingsResponse | null>(null)
@@ -24,6 +35,12 @@ export default function Rankings() {
   const [tier, setTier] = useState('all')
   const [valueOnly, setValueOnly] = useState(false)
   const [showHidden, setShowHidden] = useState(false)
+  const [selected, setSelected] = useState<BoardPlayer | null>(null)
+
+  // Route announcement for screen readers + tab identity (WCAG 2.4.2).
+  useEffect(() => {
+    document.title = 'Big Board — DraftEngine'
+  }, [])
 
   useEffect(() => {
     api
@@ -56,6 +73,9 @@ export default function Rankings() {
     return list
   }, [active, fuse, query, pos, tier, valueOnly])
 
+  // Tier bands are only honest on the untouched rank order.
+  const unfiltered = query.trim() === '' && pos === null && tier === 'all' && !valueOnly
+
   const tiersPresent = useMemo(() => {
     const set = new Set<number>()
     for (const p of active) if (p.tier != null) set.add(p.tier)
@@ -73,30 +93,33 @@ export default function Rankings() {
 
   if (loading) {
     return (
-      <p role="status" className="text-xl font-bold text-slate-600">
-        Loading the board…
-      </p>
+      <div role="status" className="space-y-4" aria-label="Loading the board">
+        <p className="sr-only">Loading the board…</p>
+        <div aria-hidden="true" className="skeleton h-12 w-64" />
+        <div aria-hidden="true" className="skeleton h-24 w-full" />
+        <div aria-hidden="true" className="skeleton h-96 w-full" />
+      </div>
     )
   }
 
   if (loadError) {
     return (
-      <div role="alert" className="card border-red-300 bg-red-50 text-lg text-red-900">
-        <p className="font-bold">
+      <div role="alert" className="card space-y-1 border-bad/50 text-lg">
+        <p className="font-bold text-bad">
           <span aria-hidden="true">❌</span> Could not load the board
         </p>
-        <p>{loadError}</p>
+        <p className="text-ink-2">{loadError}</p>
       </div>
     )
   }
 
   if (!data || data.players.length === 0) {
     return (
-      <div className="card mx-auto max-w-xl space-y-4 text-center">
+      <div className="card-hero mx-auto max-w-xl animate-slide-up space-y-4 text-center">
         <h1 className="text-2xl font-bold">
           <span aria-hidden="true">🏈</span> The board is empty
         </h1>
-        <p className="text-lg">
+        <p className="text-lg text-ink-2">
           No players yet — download data and train a model first. It takes one click.
         </p>
         <Link to="/admin" className="btn-primary">
@@ -108,19 +131,20 @@ export default function Rankings() {
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
-        <h1 className="text-3xl font-bold">
+      <header className="flex animate-slide-up flex-wrap items-baseline gap-x-4 gap-y-1">
+        <h1 className="font-display text-3xl font-bold tracking-tight">
           <span aria-hidden="true">🏈</span> Big Board
         </h1>
-        <p className="text-lg text-slate-600">
-          Season {data.season} · model {data.model_version ?? 'none'}
+        <p className="text-lg text-ink-2">
+          Season <span className="font-bold text-ink">{data.season}</span> · model{' '}
+          <span className="font-bold text-ink">{data.model_version ?? 'none'}</span>
         </p>
       </header>
 
       {!data.adp_available && (
         <p
           role="note"
-          className="rounded-2xl border-2 border-amber-300 bg-amber-100 px-4 py-3 text-lg font-bold text-amber-900"
+          className="rounded-2xl border border-warn/50 bg-warn/10 px-4 py-3 text-lg font-bold text-warn"
         >
           <span aria-hidden="true">📭</span> No ADP cached — value gap and ADP columns will fill in
           after a refresh where FFC is reachable.
@@ -130,114 +154,132 @@ export default function Rankings() {
       {editError && (
         <p
           role="alert"
-          className="rounded-2xl border-2 border-red-300 bg-red-50 px-4 py-3 text-lg font-bold text-red-900"
+          className="rounded-2xl border border-bad/50 bg-bad/10 px-4 py-3 text-lg font-bold text-bad"
         >
           <span aria-hidden="true">❌</span> Edit failed: {editError}
         </p>
       )}
 
-      {/* Toolbar */}
-      <div className="card space-y-4">
-        <div className="flex flex-wrap items-center gap-3">
-          <label htmlFor="board-search" className="text-lg font-bold">
-            <span aria-hidden="true">🔍</span> Search
-          </label>
-          <input
-            id="board-search"
-            type="text"
-            data-testid="board-search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Name or team"
-            className="w-72 max-w-full rounded-xl border-2 border-slate-300 px-4 py-2.5 text-lg"
-          />
-          {query && (
-            <button
-              type="button"
-              onClick={() => setQuery('')}
-              aria-label="Clear search"
-              className="btn-secondary text-lg"
-            >
-              <span aria-hidden="true">✕</span> Clear
-            </button>
-          )}
-        </div>
+      {/* Sticky glass toolbar — stays with you down 200+ rows. */}
+      <div className="sticky top-[76px] z-30 animate-slide-up rounded-2xl border border-edge/70 bg-surface/85 p-4 shadow-card backdrop-blur-md">
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <label htmlFor="board-search" className="sr-only">
+              Search players by name or team
+            </label>
+            <span className="relative w-80 max-w-full">
+              <span
+                aria-hidden="true"
+                className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-3"
+              >
+                🔍
+              </span>
+              <input
+                id="board-search"
+                type="text"
+                data-testid="board-search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search name or team"
+                className="w-full rounded-xl border-2 border-edge bg-raised/60 py-2.5 pl-11 pr-4 text-lg text-ink placeholder:text-ink-3 focus:border-accent/70"
+              />
+            </span>
+            {query && (
+              <button
+                type="button"
+                onClick={() => setQuery('')}
+                aria-label="Clear search"
+                className="btn-secondary px-3 py-2 text-base"
+              >
+                <span aria-hidden="true">✕</span> Clear
+              </button>
+            )}
+            <span className="ml-auto hidden text-base font-bold text-ink-3 sm:block">
+              <span aria-hidden="true">👆</span> Click a row for career detail
+            </span>
+          </div>
 
-        <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Position filter">
-          <button
-            type="button"
-            data-testid="filter-pos-All"
-            aria-pressed={pos === null}
-            onClick={() => setPos(null)}
-            className={`rounded-xl border-2 px-4 py-2 text-lg font-bold ${
-              pos === null
-                ? 'border-blue-700 bg-blue-700 text-white'
-                : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-100'
-            }`}
+          <div
+            className="flex flex-wrap items-center gap-2"
+            role="group"
+            aria-label="Position filter"
           >
-            All
-          </button>
-          {POSITIONS.map((label) => (
             <button
-              key={label}
               type="button"
-              data-testid={`filter-pos-${label}`}
-              aria-pressed={pos === label}
-              onClick={() => setPos(pos === label ? null : label)}
-              className={`rounded-xl border-2 px-4 py-2 text-lg font-bold ${
-                pos === label
-                  ? 'border-blue-700 bg-blue-700 text-white'
-                  : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-100'
+              data-testid="filter-pos-All"
+              aria-pressed={pos === null}
+              onClick={() => setPos(null)}
+              className={filterChipClass(pos === null)}
+            >
+              All
+            </button>
+            {POSITIONS.map((label) => (
+              <button
+                key={label}
+                type="button"
+                data-testid={`filter-pos-${label}`}
+                aria-pressed={pos === label}
+                onClick={() => setPos(pos === label ? null : label)}
+                className={filterChipClass(pos === label)}
+              >
+                {label}
+              </button>
+            ))}
+
+            <label htmlFor="filter-tier" className="ml-2 text-lg font-bold text-ink-2">
+              Tier
+            </label>
+            <select
+              id="filter-tier"
+              data-testid="filter-tier"
+              value={tier}
+              onChange={(e) => setTier(e.target.value)}
+              className="rounded-xl border-2 border-edge bg-raised/60 px-3 py-2 text-lg text-ink"
+            >
+              <option value="all">All tiers</option>
+              {tiersPresent.map((t) => (
+                <option key={t} value={String(t)}>
+                  Tier {t}
+                </option>
+              ))}
+            </select>
+
+            <button
+              type="button"
+              data-testid="filter-value"
+              aria-pressed={valueOnly}
+              onClick={() => setValueOnly((v) => !v)}
+              className={`ml-2 rounded-xl border-2 px-4 py-2 text-lg font-bold transition-colors ${
+                valueOnly
+                  ? 'border-good bg-good/15 text-good shadow-glow-sm'
+                  : 'border-edge bg-raised/60 text-ink-2 hover:border-good/50 hover:text-ink'
               }`}
             >
-              {label}
+              <span aria-hidden="true">💎</span> Value only
             </button>
-          ))}
-
-          <label htmlFor="filter-tier" className="ml-2 text-lg font-bold">
-            Tier
-          </label>
-          <select
-            id="filter-tier"
-            data-testid="filter-tier"
-            value={tier}
-            onChange={(e) => setTier(e.target.value)}
-            className="rounded-xl border-2 border-slate-300 bg-white px-3 py-2 text-lg"
-          >
-            <option value="all">All tiers</option>
-            {tiersPresent.map((t) => (
-              <option key={t} value={String(t)}>
-                Tier {t}
-              </option>
-            ))}
-          </select>
-
-          <button
-            type="button"
-            data-testid="filter-value"
-            aria-pressed={valueOnly}
-            onClick={() => setValueOnly((v) => !v)}
-            className={`ml-2 rounded-xl border-2 px-4 py-2 text-lg font-bold ${
-              valueOnly
-                ? 'border-green-700 bg-green-700 text-white'
-                : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-100'
-            }`}
-          >
-            <span aria-hidden="true">💎</span> Value only
-          </button>
+          </div>
         </div>
       </div>
 
-      <p className="text-lg font-bold text-slate-600">
+      {/* role=status: filter/search result counts announce to screen readers
+          (WCAG 4.1.3 status messages). */}
+      <p role="status" className="text-lg font-bold text-ink-2">
         Showing {visible.length} of {active.length} players
       </p>
 
       {visible.length === 0 ? (
-        <div className="card text-center text-xl font-bold text-slate-600">
-          No players match your filters.
+        <div className="card text-center text-xl font-bold text-ink-2">
+          <span aria-hidden="true">🕳️</span> No players match your filters.
         </div>
       ) : (
-        <BoardTable players={visible} onEdit={handleEdit} />
+        <div className="animate-slide-up">
+          <BoardTable
+            players={visible}
+            onEdit={handleEdit}
+            showTierBands={unfiltered}
+            onOpenPlayer={setSelected}
+          />
+        </div>
       )}
 
       {hidden.length > 0 && (
@@ -273,6 +315,8 @@ export default function Rankings() {
           )}
         </section>
       )}
+
+      {selected && <PlayerDrawer player={selected} onClose={() => setSelected(null)} />}
     </div>
   )
 }

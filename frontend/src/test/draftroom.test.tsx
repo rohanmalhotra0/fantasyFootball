@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes, useParams } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -273,9 +273,26 @@ describe('room (with draft id)', () => {
     renderRoom()
 
     const banner = await screen.findByTestId('on-clock-banner')
-    expect(banner).toHaveTextContent('Pick 31 — Gadget Gurus on the clock')
+    expect(banner).toHaveTextContent('Pick 31')
+    // Broadcast slot label: overall 31 in a 12-teamer = round 3, pick 7.
+    expect(banner).toHaveTextContent('3.07')
+    expect(banner).toHaveTextContent('Gadget Gurus')
     expect(banner).toHaveTextContent('Round 3 of 15')
+    // The timer now lives inside the banner.
     expect(screen.getByTestId('pick-timer')).toHaveTextContent('1:30')
+  })
+
+  it('shows the pick ticker tape with recent picks and the keys hint', async () => {
+    stubFetch(roomRoutes(false))
+    renderRoom()
+
+    const ticker = await screen.findByTestId('pick-ticker')
+    // Decorative tape: hidden from screen readers, shows "1.01 · B. Robinson".
+    expect(ticker).toHaveAttribute('aria-hidden', 'true')
+    expect(ticker).toHaveTextContent('B. Robinson')
+    expect(ticker).toHaveTextContent('1.01')
+
+    expect(screen.getByText(/Keys:/)).toBeInTheDocument()
   })
 
   it("not my turn: shows log-pick search and rec cards, no big draft button", async () => {
@@ -303,5 +320,65 @@ describe('room (with draft id)', () => {
     expect(button).toHaveTextContent('Draft Justin Jefferson')
     // Manual entry stays available, collapsed.
     expect(screen.getByText('Pick someone else')).toBeInTheDocument()
+  })
+})
+
+describe('keyboard shortcuts', () => {
+  it('b / t / n switch tabs from the keyboard', async () => {
+    stubFetch(roomRoutes(false))
+    renderRoom()
+    await screen.findByTestId('on-clock-banner')
+
+    await userEvent.keyboard('b')
+    expect(screen.getByTestId('tab-board')).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByTestId('board-grid')).toBeInTheDocument()
+
+    await userEvent.keyboard('t')
+    expect(screen.getByTestId('tab-teams')).toHaveAttribute('aria-selected', 'true')
+
+    await userEvent.keyboard('n')
+    expect(screen.getByTestId('tab-next')).toHaveAttribute('aria-selected', 'true')
+  })
+
+  it('u undoes the last pick when picks exist', async () => {
+    const fetchMock = stubFetch({
+      ...roomRoutes(false),
+      'POST /api/drafts/5/undo': {
+        payload: roomState({ picks: [pick(1, 'p1', 'Bijan Robinson')], current_overall: 2 }),
+      },
+    })
+    renderRoom()
+    await screen.findByTestId('on-clock-banner')
+
+    await userEvent.keyboard('u')
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith('/api/drafts/5/undo', expect.objectContaining({ method: 'POST' }))
+    })
+  })
+
+  it('/ focuses the pick search input', async () => {
+    stubFetch(roomRoutes(false))
+    renderRoom()
+    await screen.findByTestId('pick-search-input')
+
+    await userEvent.keyboard('/')
+
+    await waitFor(() => {
+      expect(screen.getByTestId('pick-search-input')).toHaveFocus()
+    })
+  })
+
+  it('ignores shortcut keys while typing in the search input', async () => {
+    stubFetch(roomRoutes(false))
+    renderRoom()
+
+    const input = await screen.findByTestId('pick-search-input')
+    await userEvent.click(input)
+    await userEvent.keyboard('b')
+
+    // Still on the Next tab — the keystroke went into the input instead.
+    expect(screen.getByTestId('tab-next')).toHaveAttribute('aria-selected', 'true')
+    expect(input).toHaveValue('b')
   })
 })

@@ -11,6 +11,7 @@ import type {
   DraftState,
   MakePickRequest,
   ModelVersionOut,
+  PlayerCareerResponse,
   PlayerEditRequest,
   RankingsResponse,
   RecommendationsResponse,
@@ -79,6 +80,7 @@ export const api = {
     }),
 
   rankings: () => apiFetch<RankingsResponse>('/api/rankings'),
+  playerCareer: (id: string) => apiFetch<PlayerCareerResponse>(`/api/players/${id}/career`),
   editPlayer: (edit: PlayerEditRequest) =>
     apiFetch<RankingsResponse>('/api/rankings/edits', {
       method: 'POST',

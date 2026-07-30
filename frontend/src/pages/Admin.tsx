@@ -14,6 +14,11 @@ export default function Admin() {
   const [modelsError, setModelsError] = useState<string | null>(null)
   const [adpErrors, setAdpErrors] = useState<Record<string, string>>({})
 
+  // Route announcement for screen readers + tab identity (WCAG 2.4.2).
+  useEffect(() => {
+    document.title = 'Data & models — DraftEngine'
+  }, [])
+
   const loadModels = useCallback(async () => {
     try {
       const resp = await api.adminModels()
@@ -51,23 +56,25 @@ export default function Admin() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold">Data &amp; models</h1>
+      <h1 className="animate-slide-up font-display text-3xl font-bold tracking-tight">
+        <span aria-hidden="true">🗄️</span> Data &amp; models
+      </h1>
 
       <RefreshCard onFinished={() => void loadModels()} />
 
       {modelsError ? (
-        <div role="alert" className="card space-y-3">
+        <div role="alert" className="card space-y-3 border-warn/50">
           <p className="text-lg font-bold">
             <span aria-hidden="true">⚠️</span> Could not load model versions
           </p>
-          <p>{modelsError}</p>
+          <p className="text-ink-2">{modelsError}</p>
           <button type="button" className="btn-secondary" onClick={() => void loadModels()}>
             <span aria-hidden="true">↻</span> Retry
           </button>
         </div>
       ) : versions === null ? (
         <div aria-busy="true" aria-label="Loading model versions" className="card">
-          <div className="h-32 animate-pulse rounded-xl bg-slate-100" />
+          <div className="skeleton h-32" />
         </div>
       ) : (
         <ModelTable versions={versions} onVersions={setVersions} />
@@ -81,21 +88,31 @@ export default function Admin() {
 function DataSourcesCard({ adpErrors }: { adpErrors: Record<string, string> }) {
   const errorYears = Object.keys(adpErrors).sort()
   return (
-    <section className="card space-y-3" aria-label="Data sources" data-testid="data-sources">
-      <h2 className="text-xl font-bold">
+    <section
+      className="card animate-slide-up space-y-3"
+      aria-label="Data sources"
+      data-testid="data-sources"
+    >
+      <h2 className="section-title">
         <span aria-hidden="true">🔌</span> Data sources
       </h2>
       <ul className="space-y-2">
-        <li>
-          <span aria-hidden="true">📊</span> <strong>nflverse</strong> — weekly player stats,
-          2015–2025
+        <li className="flex items-start gap-3 rounded-xl bg-raised/40 px-3 py-2">
+          <span aria-hidden="true">📊</span>
+          <span>
+            <strong>nflverse</strong>{' '}
+            <span className="text-ink-2">— weekly player stats, 2015–2025</span>
+          </span>
         </li>
-        <li>
-          <span aria-hidden="true">📋</span> <strong>FantasyFootballCalculator</strong> — ADP
-          (average draft position)
+        <li className="flex items-start gap-3 rounded-xl bg-raised/40 px-3 py-2">
+          <span aria-hidden="true">📋</span>
+          <span>
+            <strong>FantasyFootballCalculator</strong>{' '}
+            <span className="text-ink-2">— ADP (average draft position)</span>
+          </span>
         </li>
       </ul>
-      <p className="text-slate-600">
+      <p className="text-ink-3">
         The ADP download can fail on restricted networks. That is OK — the app keeps working, just
         without ADP columns.
       </p>
@@ -103,7 +120,7 @@ function DataSourcesCard({ adpErrors }: { adpErrors: Record<string, string> }) {
         <p
           role="status"
           data-testid="adp-errors"
-          className="rounded-xl border-2 border-amber-300 bg-amber-50 p-3 font-bold text-amber-900"
+          className="rounded-xl border-2 border-warn/60 bg-warn/10 p-3 font-bold"
         >
           <span aria-hidden="true">⚠️</span> Last refresh could not fetch ADP for:{' '}
           {errorYears.join(', ')}

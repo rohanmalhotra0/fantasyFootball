@@ -171,6 +171,24 @@ describe('Backtest page', () => {
     expect(await screen.findByText('Model Spearman 0.71 — beats ADP 0.48')).toBeInTheDocument()
   })
 
+  it('renders the story chip row with the leading source badged', async () => {
+    renderBacktest()
+    const chips = await screen.findByTestId('story-chips')
+
+    // Model chip: drafted-subset value plus the leader badge (word, not color).
+    const modelChip = within(chips).getByText('Model').closest('.chip') as HTMLElement
+    expect(within(modelChip).getByText('0.71')).toBeInTheDocument()
+    expect(within(modelChip).getByText('leads')).toBeInTheDocument()
+
+    // ADP and naive chips carry their comparable values, without the badge.
+    const adpChip = within(chips).getByText('ADP (crowd)').closest('.chip') as HTMLElement
+    expect(within(adpChip).getByText('0.48')).toBeInTheDocument()
+    expect(within(adpChip).queryByText('leads')).not.toBeInTheDocument()
+    const naiveChip = within(chips).getByText('Naive baseline').closest('.chip') as HTMLElement
+    expect(within(naiveChip).getByText('0.45')).toBeInTheDocument()
+    expect(within(naiveChip).queryByText('leads')).not.toBeInTheDocument()
+  })
+
   it('exports hits as correctly escaped CSV', async () => {
     const user = userEvent.setup()
     let captured: Blob | null = null
