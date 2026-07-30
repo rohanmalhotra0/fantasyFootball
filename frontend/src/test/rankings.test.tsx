@@ -2,8 +2,21 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
-import type { BoardPlayer, PlayerEditRequest, RankingsResponse } from '../lib/types'
+import type {
+  BoardPlayer,
+  PlayerCareerResponse,
+  PlayerEditRequest,
+  RankingsResponse,
+} from '../lib/types'
 import Rankings from '../pages/Rankings'
+
+// recharts' ResponsiveContainer needs ResizeObserver, which jsdom lacks.
+class ResizeObserverStub {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+vi.stubGlobal('ResizeObserver', ResizeObserverStub)
 
 function player(
   overrides: Partial<BoardPlayer> & Pick<BoardPlayer, 'player_id' | 'name' | 'position'>,
@@ -28,6 +41,19 @@ function player(
 
 let state: RankingsResponse
 
+// Career payload served for p1 only — other ids 404 so the drawer's
+// "warming up" degradation is testable too.
+const CAREER_P1: PlayerCareerResponse = {
+  player_id: 'p1',
+  name: 'Justin Jefferson',
+  position: 'WR',
+  seasons: [
+    { season: 2023, games: 10, ppr_points: 180.4, ppg: 18.0, receptions: 68, targets: 100, carries: 2 },
+    { season: 2024, games: 17, ppr_points: 344.2, ppg: 20.2, receptions: 103, targets: 154, carries: 1 },
+    { season: 2025, games: 16, ppr_points: 310.9, ppg: 19.4, receptions: 96, targets: 140, carries: 0 },
+  ],
+}
+
 function applyEdit(p: BoardPlayer, edit: PlayerEditRequest): BoardPlayer {
   const next = { ...p }
   if (edit.pinned !== undefined) next.pinned = edit.pinned
@@ -45,6 +71,7 @@ function jsonResponse(payload: unknown) {
 }
 
 beforeEach(() => {
+  vi.stubGlobal('ResizeObserver', ResizeObserverStub)
   state = {
     players: [
       player({
@@ -108,6 +135,15 @@ beforeEach(() => {
       const url = String(input)
       const method = init?.method ?? 'GET'
       if (url === '/api/rankings' && method === 'GET') return jsonResponse(state)
+      if (url === '/api/players/p1/career' && method === 'GET') return jsonResponse(CAREER_P1)
+      if (/^\/api\/players\/[^/]+\/career$/.test(url) && method === 'GET') {
+        return {
+          ok: false,
+          status: 404,
+          statusText: 'Not Found',
+          json: async () => ({ detail: 'career not built yet' }),
+        }
+      }
       if (url === '/api/rankings/edits' && method === 'POST') {
         const edit = JSON.parse(String(init?.body)) as PlayerEditRequest
         state = {
@@ -193,6 +229,71 @@ test('pin calls the edit API with the right body', async () => {
   const init = call?.[1] as RequestInit
   expect(init.method).toBe('POST')
   expect(JSON.parse(String(init.body))).toEqual({ player_id: 'p2', pinned: true })
+})
+
+test('clicking a player row opens the career drawer; close restores the board', async () => {
+  const user = userEvent.setup()
+  await renderRankings()
+
+  await user.click(screen.getByTestId('player-open-p1'))
+
+  const drawer = await screen.findByTestId('drawer-root')
+  const dialog = within(drawer).getByRole('dialog')
+  expect(dialog).toHaveAttribute('aria-modal', 'true')
+  expect(within(drawer).getByRole('heading', { name: 'Justin Jefferson' })).toBeInTheDocument()
+
+  // Board numbers ride along as stat tiles.
+  expect(within(drawer).getByText('Proj')).toBeInTheDocument()
+  expect(within(drawer).getByText('VORP')).toBeInTheDocument()
+  expect(within(drawer).getByText('280.5')).toBeInTheDocument()
+
+  // Career fetch resolves into the season-by-season table + summary line.
+  expect(await within(drawer).findByText('2024')).toBeInTheDocument()
+  expect(within(drawer).getByText('344.2')).toBeInTheDocument()
+  expect(within(drawer).getByText(/best year 2024 at 20.2 PPG/)).toBeInTheDocument()
+
+  const fetchMock = globalThis.fetch as unknown as ReturnType<typeof vi.fn>
+  expect(
+    fetchMock.mock.calls.some(([url]) => String(url) === '/api/players/p1/career'),
+  ).toBe(true)
+
+  await user.click(screen.getByTestId('drawer-close'))
+  expect(screen.queryByTestId('drawer-root')).not.toBeInTheDocument()
+})
+
+test('drawer degrades gracefully while the career endpoint is warming up', async () => {
+  const user = userEvent.setup()
+  await renderRankings()
+
+  await user.click(screen.getByTestId('player-open-p3'))
+
+  const drawer = await screen.findByTestId('drawer-root')
+  expect(await within(drawer).findByText(/warming up/)).toBeInTheDocument()
+
+  // Esc also closes the drawer.
+  await user.keyboard('{Escape}')
+  expect(screen.queryByTestId('drawer-root')).not.toBeInTheDocument()
+})
+
+test('action buttons inside a row do not open the drawer', async () => {
+  const user = userEvent.setup()
+  await renderRankings()
+  await user.click(screen.getByTestId('pin-p2'))
+  await screen.findByRole('button', { name: 'Unpin Bijan Robinson' })
+  expect(screen.queryByTestId('drawer-root')).not.toBeInTheDocument()
+})
+
+test('tier divider bands appear on the unfiltered board and vanish under filters', async () => {
+  const user = userEvent.setup()
+  await renderRankings()
+  const table = screen.getByTestId('board-table')
+  expect(within(table).getByText('Tier 1')).toBeInTheDocument()
+  expect(within(table).getByText('Tier 2')).toBeInTheDocument()
+  expect(within(table).getByText('Untiered')).toBeInTheDocument()
+
+  // Filtered order is no longer the pure rank order — bands must go away.
+  await user.click(screen.getByTestId('filter-pos-WR'))
+  expect(within(table).queryByText('Tier 1')).not.toBeInTheDocument()
 })
 
 test('missing ADP shows the refresh banner', async () => {

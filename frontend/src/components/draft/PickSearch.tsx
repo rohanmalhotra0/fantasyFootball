@@ -50,7 +50,7 @@ export default function PickSearch({
         <input
           type="search"
           data-testid="pick-search-input"
-          className="w-full rounded-xl border-2 border-slate-300 px-4 py-3 text-lg"
+          className="w-full rounded-xl border-2 border-edge bg-bg/50 px-4 py-3 text-lg text-ink placeholder:text-ink-3 focus:border-accent"
           placeholder="Type a name, press Enter for the top match"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -64,20 +64,22 @@ export default function PickSearch({
         />
       </label>
       {players.length === 0 ? (
-        <p className="text-slate-600">Player pool not loaded yet.</p>
+        <p className="text-ink-3">Player pool not loaded yet.</p>
       ) : results.length === 0 ? (
-        <p className="text-slate-600">No remaining players match “{query.trim()}”.</p>
+        <p className="text-ink-3">No remaining players match “{query.trim()}”.</p>
       ) : (
         <ul className="space-y-2">
           {results.map((p) => (
             <li
               key={p.player_id}
-              className="flex flex-wrap items-center gap-3 rounded-xl border-2 border-slate-200 bg-white px-4 py-3"
+              className="flex flex-wrap items-center gap-3 rounded-xl border border-edge/60 bg-raised/50 px-4 py-3 transition-colors hover:border-accent/50"
             >
               <span className="text-lg font-bold">{p.name}</span>
               <PosChip position={p.position} team={p.team} />
               {p.projected_points != null && (
-                <span className="text-slate-700">{Math.round(p.projected_points)} pts</span>
+                <span className="tabular-nums text-ink-2">
+                  {Math.round(p.projected_points)} pts
+                </span>
               )}
               <button
                 type="button"

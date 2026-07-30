@@ -31,11 +31,11 @@ export default function NextUpPanel({
   if (recs == null) {
     return (
       <div data-testid="next-up" aria-busy="true" className="space-y-4">
-        <p role="status" className="text-xl font-bold text-slate-600">
+        <p role="status" className="text-xl font-bold text-ink-3">
           Working out the best picks…
         </p>
-        <div className="card h-40 animate-pulse bg-slate-100" />
-        <div className="card h-40 animate-pulse bg-slate-100" />
+        <div className="skeleton h-40" />
+        <div className="skeleton h-40" />
       </div>
     )
   }
@@ -46,11 +46,14 @@ export default function NextUpPanel({
   return (
     <div data-testid="next-up" className="space-y-4">
       {!myTurn && (
-        <section className="card space-y-4">
-          <h2 className="text-2xl font-bold">On the clock: {onClockName}</h2>
+        <section className="card animate-slide-up space-y-4">
+          <h2 className="section-title text-2xl">On the clock: {onClockName}</h2>
           {recs.picks_until_my_turn != null && (
-            <p className="text-lg text-slate-700">
-              Your turn in <span className="font-bold">{recs.picks_until_my_turn}</span>{' '}
+            <p className="text-lg text-ink-2">
+              Your turn in{' '}
+              <span className="font-display font-bold text-accent-2">
+                {recs.picks_until_my_turn}
+              </span>{' '}
               {recs.picks_until_my_turn === 1 ? 'pick' : 'picks'}. Log their pick when they make it:
             </p>
           )}
@@ -64,11 +67,11 @@ export default function NextUpPanel({
         </section>
       )}
 
-      <h2 className="text-2xl font-bold">
+      <h2 className="section-title text-2xl">
         <span aria-hidden="true">🎯</span> Next up for you
       </h2>
       {top5.length === 0 ? (
-        <p className="card text-lg text-slate-600">
+        <p className="card text-lg text-ink-3">
           No recommendations yet — the board may still be loading, or the pool is empty.
         </p>
       ) : (
@@ -79,7 +82,7 @@ export default function NextUpPanel({
 
       {myTurn && (
         <details className="card">
-          <summary className="cursor-pointer text-lg font-bold">
+          <summary className="cursor-pointer text-lg font-bold text-ink-2 transition-colors hover:text-ink">
             <span aria-hidden="true">🔎</span> Pick someone else
           </summary>
           <div className="mt-4">

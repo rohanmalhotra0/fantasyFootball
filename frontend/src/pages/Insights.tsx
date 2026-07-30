@@ -36,11 +36,11 @@ export default function Insights() {
 
   return (
     <div className="space-y-10">
-      <header>
-        <h1 className="text-3xl font-bold">
+      <header className="animate-slide-up">
+        <h1 className="font-display text-3xl font-bold tracking-tight">
           <span aria-hidden="true">🔬</span> Insights
         </h1>
-        <p className="text-slate-600">
+        <p className="max-w-3xl text-ink-2">
           What two-plus decades of weekly stats say about how players age, who you can trust week
           to week, and how the scoring pie moves between positions.
         </p>

@@ -10,11 +10,11 @@ import type { LeagueSettings, SettingsResponse } from '../lib/types'
 
 type PresetId = 'ppr' | 'half' | 'standard' | 'custom'
 
-const PRESETS: { id: PresetId; label: string; hint: string }[] = [
-  { id: 'ppr', label: 'PPR', hint: '1 pt per catch' },
-  { id: 'half', label: 'Half', hint: '0.5 pt per catch' },
-  { id: 'standard', label: 'Standard', hint: '0 pt per catch' },
-  { id: 'custom', label: 'Custom', hint: 'Set every stat' },
+const PRESETS: { id: PresetId; label: string; hint: string; icon: string }[] = [
+  { id: 'ppr', label: 'PPR', hint: '1 pt per catch', icon: '🎯' },
+  { id: 'half', label: 'Half', hint: '0.5 pt per catch', icon: '➗' },
+  { id: 'standard', label: 'Standard', hint: '0 pt per catch', icon: '🏈' },
+  { id: 'custom', label: 'Custom', hint: 'Set every stat', icon: '🛠️' },
 ]
 
 const REPLACEMENT_ORDER = ['QB', 'RB', 'WR', 'TE', 'K', 'DST']
@@ -113,35 +113,38 @@ export default function Settings() {
 
   if (loading) {
     return (
-      <p role="status" className="text-xl font-bold text-slate-600">
-        Loading settings…
-      </p>
+      <div role="status" aria-label="Loading settings" className="space-y-6">
+        <div className="skeleton h-12 w-full max-w-sm" />
+        <div className="skeleton h-48" />
+        <div className="skeleton h-56" />
+        <div className="skeleton h-72" />
+      </div>
     )
   }
 
   if (loadError || !form || !data) {
     return (
-      <div role="alert" className="card border-red-300 bg-red-50 text-lg text-red-900">
+      <div role="alert" className="card border-bad/50 text-lg">
         <p className="font-bold">
           <span aria-hidden="true">❌</span> Could not load settings
         </p>
-        <p>{loadError ?? 'No settings returned'}</p>
+        <p className="text-ink-2">{loadError ?? 'No settings returned'}</p>
       </div>
     )
   }
 
-  const replacementText = REPLACEMENT_ORDER.filter((p) => data.replacement_counts[p] != null)
-    .map((p) => `${p}${data.replacement_counts[p]}`)
-    .join(' · ')
+  const replacementCounts = REPLACEMENT_ORDER.filter(
+    (p) => data.replacement_counts[p] != null,
+  ).map((p) => ({ pos: p, count: data.replacement_counts[p] }))
 
   return (
     <div className="space-y-6 pb-4">
-      <h1 className="text-3xl font-bold">
+      <h1 className="animate-slide-up font-display text-3xl font-bold tracking-tight">
         <span aria-hidden="true">⚙️</span> League Settings
       </h1>
 
-      <section className="card space-y-5" aria-label="League size">
-        <h2 className="text-2xl font-bold">League size</h2>
+      <section className="card animate-slide-up space-y-5" aria-label="League size">
+        <h2 className="section-title text-2xl">League size</h2>
         <Stepper
           label="Teams"
           value={form.teams}
@@ -158,20 +161,22 @@ export default function Settings() {
           testId="my-slot-input"
           onChange={(n) => update({ my_slot: n })}
         />
-        <p className="text-base text-slate-600">My slot = where you pick in round 1.</p>
+        <p className="text-base text-ink-3">My slot = where you pick in round 1.</p>
       </section>
 
-      <section className="card space-y-5" aria-label="Scoring">
-        <h2 className="text-2xl font-bold">Scoring</h2>
-        <div role="radiogroup" aria-label="Scoring preset" className="grid gap-3 sm:grid-cols-4">
+      <section className="card animate-slide-up space-y-5" aria-label="Scoring">
+        <h2 className="section-title text-2xl">Scoring</h2>
+        <div role="radiogroup" aria-label="Scoring preset" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {PRESETS.map((p) => {
             const selected = form.scoring_preset === p.id
             return (
               <label
                 key={p.id}
                 data-testid={`scoring-preset-${p.id}`}
-                className={`cursor-pointer rounded-2xl border-2 p-4 ${
-                  selected ? 'border-blue-700 bg-blue-50' : 'border-slate-300 bg-white'
+                className={`relative cursor-pointer rounded-2xl border-2 p-5 transition-all ${
+                  selected
+                    ? 'border-accent bg-accent/10 shadow-glow-sm'
+                    : 'border-edge bg-raised/40 hover:border-accent/50 hover:bg-raised/70'
                 }`}
               >
                 <input
@@ -182,11 +187,17 @@ export default function Settings() {
                   checked={selected}
                   onChange={() => choosePreset(p.id)}
                 />
-                <span className="block text-lg font-bold">
-                  {selected && <span aria-hidden="true">✓ </span>}
-                  {p.label}
+                {selected && (
+                  <span className="absolute right-3 top-3 grid h-7 w-7 place-items-center rounded-full bg-accent font-bold text-bg">
+                    <span aria-hidden="true">✓</span>
+                    <span className="sr-only">selected</span>
+                  </span>
+                )}
+                <span aria-hidden="true" className="block text-2xl">
+                  {p.icon}
                 </span>
-                <span className="block text-base text-slate-600">{p.hint}</span>
+                <span className="block font-display text-xl font-bold">{p.label}</span>
+                <span className="block text-base text-ink-2">{p.hint}</span>
               </label>
             )
           })}
@@ -196,23 +207,23 @@ export default function Settings() {
         )}
       </section>
 
-      <section className="card space-y-5" aria-label="Roster">
-        <h2 className="text-2xl font-bold">Roster</h2>
+      <section className="card animate-slide-up space-y-5" aria-label="Roster">
+        <h2 className="section-title text-2xl">Roster</h2>
         <RosterEditor roster={form.roster} onChange={(roster) => update({ roster })} />
       </section>
 
-      <section className="card space-y-5" aria-label="Draft">
-        <h2 className="text-2xl font-bold">Draft</h2>
+      <section className="card animate-slide-up space-y-5" aria-label="Draft">
+        <h2 className="section-title text-2xl">Draft</h2>
         <div className="flex flex-wrap gap-3" role="group" aria-label="Draft type">
           <button
             type="button"
             data-testid="draft-type-snake"
             aria-pressed={form.draft_type === 'snake'}
             onClick={() => update({ draft_type: 'snake' })}
-            className={`rounded-xl border-2 px-5 py-2.5 text-lg font-bold ${
+            className={`rounded-xl border-2 px-5 py-2.5 text-lg font-bold transition-colors ${
               form.draft_type === 'snake'
-                ? 'border-blue-700 bg-blue-700 text-white'
-                : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-100'
+                ? 'border-accent bg-accent text-bg shadow-glow-sm'
+                : 'border-edge bg-raised/60 text-ink hover:border-accent/60 hover:bg-raised'
             }`}
           >
             <span aria-hidden="true">🐍</span> Snake
@@ -222,17 +233,17 @@ export default function Settings() {
             data-testid="draft-type-auction"
             aria-pressed={form.draft_type === 'auction'}
             onClick={() => update({ draft_type: 'auction' })}
-            className={`rounded-xl border-2 px-5 py-2.5 text-lg font-bold ${
+            className={`rounded-xl border-2 px-5 py-2.5 text-lg font-bold transition-colors ${
               form.draft_type === 'auction'
-                ? 'border-blue-700 bg-blue-700 text-white'
-                : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-100'
+                ? 'border-accent bg-accent text-bg shadow-glow-sm'
+                : 'border-edge bg-raised/60 text-ink hover:border-accent/60 hover:bg-raised'
             }`}
           >
             <span aria-hidden="true">💰</span> Auction
           </button>
         </div>
         {form.draft_type === 'auction' && (
-          <p role="note" className="text-lg text-slate-600">
+          <p role="note" className="text-lg text-ink-2">
             Auction: board values only, live room is snake-first
           </p>
         )}
@@ -256,7 +267,7 @@ export default function Settings() {
                 onChange={(e) => setTeamName(i, e.target.value)}
                 placeholder={`Team ${i + 1}`}
                 aria-label={`Team ${i + 1} name`}
-                className="rounded-xl border-2 border-slate-300 px-4 py-2.5 text-lg"
+                className="rounded-xl border-2 border-edge bg-surface px-4 py-2.5 text-lg text-ink placeholder:text-ink-3 transition-colors hover:border-accent/60"
               />
             ))}
           </div>
@@ -266,14 +277,14 @@ export default function Settings() {
       {saveError && (
         <p
           role="alert"
-          className="rounded-2xl border-2 border-red-300 bg-red-50 px-4 py-3 text-lg font-bold text-red-900"
+          className="rounded-2xl border-2 border-bad/60 bg-bad/10 px-4 py-3 text-lg font-bold"
         >
           <span aria-hidden="true">❌</span> Not saved: {saveError}
         </p>
       )}
 
       {/* Sticky footer: the one primary action + live proof of the value math */}
-      <div className="sticky bottom-0 z-10 -mx-4 border-t-2 border-slate-200 bg-white px-4 py-4 shadow-[0_-4px_12px_rgba(0,0,0,0.06)]">
+      <div className="sticky bottom-0 z-10 -mx-4 border-t border-edge/70 bg-bg/85 px-4 py-4 shadow-[0_-16px_40px_-18px_rgb(var(--de-accent)/0.35)] backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-6 gap-y-3">
           <button
             type="button"
@@ -285,18 +296,26 @@ export default function Settings() {
             <span aria-hidden="true">💾</span> {saving ? 'Saving…' : 'Save settings'}
           </button>
           {saved && (
-            <p data-testid="settings-saved" className="text-lg font-bold text-green-800">
+            <p data-testid="settings-saved" className="text-lg font-bold text-good">
               ✓ Saved — VORP updated everywhere
             </p>
           )}
-          <div
-            data-testid="replacement-preview"
-            className="rounded-xl border-2 border-slate-200 bg-slate-50 px-4 py-2 text-lg"
-          >
-            <span className="font-bold">Replacement:</span> {replacementText}
-            <span className="block text-base text-slate-600">
+          <div data-testid="replacement-preview" className="card-hero min-w-[16rem] flex-1 space-y-2 p-4">
+            <p className="font-bold uppercase tracking-[0.14em] text-ink-3">Replacement level</p>
+            <div className="flex flex-wrap gap-2">
+              {replacementCounts.map(({ pos, count }) => (
+                <span
+                  key={`${pos}${count}`}
+                  className="chip animate-slide-up border border-edge bg-raised/60 font-display text-ink tabular-nums"
+                >
+                  {pos}
+                  {count}
+                </span>
+              ))}
+            </div>
+            <p className="text-base text-ink-3">
               Last startable player per position — VORP measures against these.
-            </span>
+            </p>
           </div>
         </div>
       </div>

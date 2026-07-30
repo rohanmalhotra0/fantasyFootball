@@ -8,13 +8,23 @@ import {
   YAxis,
 } from 'recharts'
 import type { AgingBucket, AgingCurvesResponse, PositionAgingCurve } from '../../lib/types'
-import { POS_COLORS, POS_LABELS, pct } from './positions'
+import {
+  CHART_EDGE,
+  CHART_INK_2,
+  CHART_INK_3,
+  POS_CHIP,
+  POS_CHIP_FALLBACK,
+  POS_COLORS,
+  POS_LABELS,
+  pct,
+} from './positions'
 
 /**
  * One small-multiple line chart per position: mean PPR points by years of
- * experience. Single series per chart, so identity never rides on hue;
- * per-bucket n lives in the tooltip AND in the text line under each chart,
- * and every chart carries a plain-text takeaway.
+ * experience. Single series per chart, so identity never rides on hue (the
+ * panel's line may wear its position hue — one series per panel); per-bucket
+ * n lives in the tooltip AND in the ink-3 caption under each chart, and
+ * every chart carries a plain-text takeaway.
  */
 interface Props {
   data: AgingCurvesResponse | null
@@ -45,53 +55,74 @@ function BucketTooltip({
   if (!active || !payload || payload.length === 0) return null
   const b = payload[0].payload
   return (
-    <div className="rounded-xl border-2 border-slate-300 bg-white p-3 shadow-md">
+    <div className="rounded-xl border border-edge bg-surface p-3 text-ink shadow-card">
       <p className="font-bold">Year {b.label}</p>
-      <p>
-        Mean {b.mean_points.toFixed(0)} pts · median {b.median_points.toFixed(0)}
+      <p className="text-ink-2">
+        Mean <span className="font-bold text-ink tabular-nums">{b.mean_points.toFixed(0)}</span> pts
+        · median <span className="font-bold text-ink tabular-nums">{b.median_points.toFixed(0)}</span>
       </p>
-      <p>
+      <p className="text-ink-2 tabular-nums">
         {b.mean_ppg.toFixed(1)} ppg · {pct(b.ratio_vs_peak)} of peak
       </p>
-      <p className="text-slate-600">n = {b.n} seasons</p>
+      <p className="text-ink-3">n = {b.n} seasons</p>
     </div>
   )
 }
 
 function CurveCard({ curve }: { curve: PositionAgingCurve }) {
-  const color = POS_COLORS[curve.position] ?? '#334155'
+  const color = POS_COLORS[curve.position] ?? CHART_INK_3
+  const chip = POS_CHIP[curve.position] ?? POS_CHIP_FALLBACK
   const counts = curve.buckets.map((b) => b.n)
   return (
-    <div className="card space-y-2">
-      <h3 className="text-lg font-bold" style={{ color }}>
-        {POS_LABELS[curve.position] ?? curve.position}
-      </h3>
-      <div className="h-56 w-full">
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={curve.buckets} margin={{ top: 8, right: 16, bottom: 20, left: 0 }}>
-            <CartesianGrid stroke="#e2e8f0" strokeWidth={1} vertical={false} />
-            <XAxis
-              dataKey="label"
-              label={{ value: 'Years of experience', position: 'insideBottom', offset: -12 }}
-              tick={{ fill: '#475569' }}
-            />
-            <YAxis tick={{ fill: '#475569' }} width={44} />
-            <Tooltip content={<BucketTooltip />} />
-            <Line
-              type="monotone"
-              dataKey="mean_points"
-              name="Mean PPR points"
-              stroke={color}
-              strokeWidth={2}
-              dot={{ r: 3, fill: color, strokeWidth: 0 }}
-              activeDot={{ r: 5 }}
-              isAnimationActive={false}
-            />
-          </LineChart>
-        </ResponsiveContainer>
+    <div className="card space-y-3">
+      <div className="flex flex-wrap items-center gap-3">
+        <span className={`chip whitespace-nowrap border text-ink ${chip.chip}`}>
+          <span aria-hidden="true" className={`h-2.5 w-2.5 shrink-0 rounded-sm ${chip.dot}`} />
+          {curve.position}
+        </span>
+        <h3 className="section-title">{POS_LABELS[curve.position] ?? curve.position}</h3>
       </div>
-      <p className="font-bold text-slate-800">{takeaway(curve)}</p>
-      <p className="text-sm text-slate-600">
+      <div className="rounded-xl border border-edge/50 bg-bg/40 p-2">
+        <div className="h-56 w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={curve.buckets} margin={{ top: 8, right: 16, bottom: 20, left: 0 }}>
+              <CartesianGrid stroke={CHART_EDGE} strokeOpacity={0.5} strokeWidth={1} vertical={false} />
+              <XAxis
+                dataKey="label"
+                label={{
+                  value: 'Years of experience',
+                  position: 'insideBottom',
+                  offset: -12,
+                  fill: CHART_INK_2,
+                  fontWeight: 700,
+                }}
+                tick={{ fill: CHART_INK_3, fontSize: 14 }}
+                tickLine={{ stroke: CHART_EDGE }}
+                axisLine={{ stroke: CHART_EDGE }}
+              />
+              <YAxis
+                tick={{ fill: CHART_INK_3, fontSize: 14 }}
+                tickLine={{ stroke: CHART_EDGE }}
+                axisLine={{ stroke: CHART_EDGE }}
+                width={44}
+              />
+              <Tooltip content={<BucketTooltip />} cursor={{ stroke: CHART_INK_3, strokeDasharray: '4 4' }} />
+              <Line
+                type="monotone"
+                dataKey="mean_points"
+                name="Mean PPR points"
+                stroke={color}
+                strokeWidth={2.5}
+                dot={{ r: 3, fill: color, strokeWidth: 0 }}
+                activeDot={{ r: 5 }}
+                isAnimationActive={false}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+      <p className="font-bold text-ink">{takeaway(curve)}</p>
+      <p className="text-ink-3">
         Seasons per bucket (year 0 → {curve.buckets[curve.buckets.length - 1]?.label}):{' '}
         {counts.join(', ')}
       </p>
@@ -101,22 +132,26 @@ function CurveCard({ curve }: { curve: PositionAgingCurve }) {
 
 export default function AgingCurvesSection({ data, error }: Props) {
   return (
-    <section className="space-y-4" data-testid="insights-aging" aria-label="Aging curves">
+    <section
+      className="animate-slide-up space-y-4"
+      data-testid="insights-aging"
+      aria-label="Aging curves"
+    >
       <div>
-        <h2 className="text-2xl font-bold">
+        <h2 className="font-display text-2xl font-bold tracking-tight">
           <span aria-hidden="true">📉</span> Aging curves
         </h2>
-        <p className="text-slate-600">
+        <p className="text-ink-2">
           Average PPR points by years in the league, per position — where careers climb, plateau,
           and fall off.
         </p>
       </div>
       {error && (
-        <p role="alert" className="card font-bold">
+        <p role="alert" className="card border-warn/50 font-bold text-ink">
           <span aria-hidden="true">⚠️</span> {error}
         </p>
       )}
-      {!data && !error && <div className="card h-56 animate-pulse bg-slate-100" />}
+      {!data && !error && <div className="skeleton h-56" />}
       {data && (
         <>
           <div className="grid gap-6 lg:grid-cols-2">
@@ -124,7 +159,7 @@ export default function AgingCurvesSection({ data, error }: Props) {
               <CurveCard key={curve.position} curve={curve} />
             ))}
           </div>
-          <p className="text-sm text-slate-600">{data.note}</p>
+          <p className="text-ink-3">{data.note}</p>
         </>
       )}
     </section>

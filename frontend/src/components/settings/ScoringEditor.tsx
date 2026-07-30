@@ -71,7 +71,7 @@ function ScoreField({
           if (!Number.isNaN(n)) onCommit(n)
         }}
         onBlur={() => setText(String(value))}
-        className="h-12 w-24 rounded-xl border-2 border-slate-300 px-2 text-center text-lg"
+        className="h-12 w-24 rounded-xl border-2 border-edge bg-surface px-2 text-center text-lg text-ink tabular-nums transition-colors hover:border-accent/60"
       />
     </div>
   )
@@ -85,7 +85,7 @@ interface ScoringEditorProps {
 export default function ScoringEditor({ scoring, onChange }: ScoringEditorProps) {
   return (
     <div className="space-y-4">
-      <p className="text-base text-slate-600">Points per stat. Negative numbers are allowed.</p>
+      <p className="text-base text-ink-3">Points per stat. Negative numbers are allowed.</p>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {FIELDS.map((f) => (
           <ScoreField

@@ -252,7 +252,7 @@ export default function VoicePanel({ draftId, onCommitted, myTurn }: VoicePanelP
   return (
     <section className="card space-y-4" aria-label="Voice picks">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-xl font-bold">
+        <h2 className="section-title">
           <span aria-hidden="true">🎤</span> Voice picks
         </h2>
         <VoiceSettings speakEnabled={speakEnabled} onSpeakChange={handleSpeakChange} />
@@ -263,22 +263,30 @@ export default function VoicePanel({ draftId, onCommitted, myTurn }: VoicePanelP
         data-testid="voice-toggle"
         aria-pressed={on}
         onClick={on ? stopListening : startListening}
-        className={`${on ? 'btn-primary' : 'btn-secondary'} w-full justify-center py-4 text-2xl`}
+        className={`inline-flex w-full flex-wrap items-center justify-center gap-x-3 gap-y-1.5 rounded-full border-2 px-6 py-4 font-display text-xl font-bold transition-colors ${
+          on
+            ? 'animate-pulse-ring border-accent bg-accent text-bg'
+            : 'border-edge bg-raised/60 text-ink hover:border-accent/60 hover:bg-raised'
+        }`}
       >
-        <span aria-hidden="true">🎤</span>
-        Voice: {on ? 'ON' : 'OFF'}
+        <span className="whitespace-nowrap">
+          <span aria-hidden="true">🎤</span> Voice: {on ? 'ON' : 'OFF'}
+        </span>
         {on && (
-          <span className="ml-2 inline-flex items-center gap-2 rounded-full bg-blue-900/40 px-3 py-1 text-base font-bold">
-            <span aria-hidden="true" className="h-3 w-3 animate-pulse rounded-full bg-emerald-300" />
+          <span className="ml-1 inline-flex items-center gap-2 rounded-full bg-bg/25 px-3.5 py-1 font-sans text-base font-bold uppercase tracking-[0.14em]">
+            <span aria-hidden="true" className="relative flex h-3 w-3">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-good opacity-70" />
+              <span className="relative inline-flex h-3 w-3 rounded-full bg-good" />
+            </span>
             listening
           </span>
         )}
       </button>
 
-      <p data-testid="voice-status" aria-live="polite" className="text-lg">
+      <p data-testid="voice-status" aria-live="polite" className="text-lg text-ink-2">
         {lastHeard !== null ? (
           <>
-            Heard: &ldquo;{lastHeard}&rdquo;
+            Heard: <span className="font-bold text-ink">&ldquo;{lastHeard}&rdquo;</span>
           </>
         ) : on ? (
           <>Say a pick — like &ldquo;Team 3 takes Bijan&rdquo;</>
@@ -293,8 +301,8 @@ export default function VoicePanel({ draftId, onCommitted, myTurn }: VoicePanelP
           role="status"
           className={
             notice.kind === 'warning'
-              ? 'rounded-xl border-2 border-amber-300 bg-amber-50 px-4 py-3 text-lg font-bold text-amber-900'
-              : 'rounded-xl border-2 border-slate-200 bg-slate-50 px-4 py-3 text-lg text-slate-700'
+              ? 'rounded-xl border-2 border-warn/60 bg-warn/10 px-4 py-3 text-lg font-bold'
+              : 'rounded-xl border border-edge bg-raised/50 px-4 py-3 text-lg text-ink-2'
           }
         >
           <span aria-hidden="true">{notice.kind === 'warning' ? '⚠️' : 'ℹ️'}</span>{' '}

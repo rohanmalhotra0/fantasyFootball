@@ -387,3 +387,20 @@ export interface TrendsResponse {
   replacement_cutoffs: Record<string, number>
   note: string
 }
+
+// ---------- player career (drawer on the Big Board) ----------
+
+export interface PlayerCareerResponse {
+  player_id: string
+  name: string
+  position: string
+  seasons: {
+    season: number
+    games: number
+    ppr_points: number
+    ppg: number
+    receptions: number
+    targets: number
+    carries: number
+  }[]
+}

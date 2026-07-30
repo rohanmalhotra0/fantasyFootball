@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { ApiError, api } from '../../lib/api'
 import { downloadCsv, toCsv, type CsvColumn } from '../../lib/csv'
+import PositionChip from '../board/PositionChip'
 import type { SimPick, SimulationResponse } from '../../lib/types'
 
 /**
@@ -31,6 +32,25 @@ function verdictLine(result: SimulationResponse): string {
   return 'Model roster exactly matched the league median.'
 }
 
+/** Delta stat tile: arrow + signed number + good/bad ink, never color alone. */
+function DeltaStat({ diff }: { diff: number }) {
+  if (diff > 0) {
+    return (
+      <p className="stat-number text-good">
+        <span aria-hidden="true">▲</span> +{diff.toFixed(1)}
+      </p>
+    )
+  }
+  if (diff < 0) {
+    return (
+      <p className="stat-number text-bad">
+        <span aria-hidden="true">▼</span> {diff.toFixed(1)}
+      </p>
+    )
+  }
+  return <p className="stat-number text-ink-2">±0.0</p>
+}
+
 export default function SimulatorPanel({ year, teams }: Props) {
   const [slot, setSlot] = useState(5)
   const [running, setRunning] = useState(false)
@@ -57,46 +77,84 @@ export default function SimulatorPanel({ year, teams }: Props) {
   }
 
   const clampedSlot = Math.min(Math.max(slot, 1), teams)
+  const stepTo = (next: number) => setSlot(Math.min(Math.max(next, 1), teams))
 
   return (
-    <section className="card space-y-4" aria-label="Draft simulator">
-      <h2 className="text-xl font-bold">
-        <span aria-hidden="true">🤖</span> What if the model drafted {year} for me?
-      </h2>
-      <p className="text-slate-600">
-        The model picks from your slot; the other {teams - 1} teams draft by that year's ADP.
-      </p>
+    <section className="card animate-slide-up space-y-5" aria-label="Draft simulator">
+      <div className="space-y-1">
+        <h2 className="section-title">
+          <span aria-hidden="true">🤖</span> What if the model drafted {year} for me?
+        </h2>
+        <p className="text-ink-2">
+          The model picks from your slot; the other {teams - 1} teams draft by that year's ADP.
+        </p>
+      </div>
+
       <div className="flex flex-wrap items-end gap-4">
-        <label className="flex flex-col gap-1 font-bold">
-          My draft slot (1–{teams})
-          <input
-            type="number"
-            min={1}
-            max={teams}
-            value={slot}
-            onChange={(e) => setSlot(Number(e.target.value))}
-            className="w-28 rounded-xl border-2 border-slate-300 px-3 py-2 font-normal"
-          />
-        </label>
+        <div className="flex flex-col gap-1 font-bold">
+          <label htmlFor="sim-slot-input" className="text-ink-2">
+            My draft slot (1–{teams})
+          </label>
+          <div className="flex items-stretch overflow-hidden rounded-xl border-2 border-edge bg-raised/60">
+            <button
+              type="button"
+              aria-label="Decrease draft slot"
+              disabled={running || slot <= 1}
+              onClick={() => stepTo(clampedSlot - 1)}
+              className="px-4 font-display text-xl font-bold text-ink-2 transition-colors hover:bg-raised hover:text-ink disabled:opacity-40"
+            >
+              −
+            </button>
+            <input
+              id="sim-slot-input"
+              type="number"
+              min={1}
+              max={teams}
+              value={slot}
+              onChange={(e) => setSlot(Number(e.target.value))}
+              className="w-20 border-x-2 border-edge bg-transparent px-2 py-2.5 text-center font-display text-xl font-bold text-ink [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+            />
+            <button
+              type="button"
+              aria-label="Increase draft slot"
+              disabled={running || slot >= teams}
+              onClick={() => stepTo(clampedSlot + 1)}
+              className="px-4 font-display text-xl font-bold text-ink-2 transition-colors hover:bg-raised hover:text-ink disabled:opacity-40"
+            >
+              +
+            </button>
+          </div>
+        </div>
         <button
           type="button"
-          className="btn-primary"
+          className="btn-primary relative overflow-hidden px-8 text-xl"
           data-testid="simulate-button"
           disabled={running || clampedSlot !== slot}
           onClick={run}
         >
+          {running && (
+            <span
+              aria-hidden="true"
+              className="absolute inset-0 animate-shimmer"
+              style={{
+                background:
+                  'linear-gradient(100deg, transparent 35%, rgb(255 255 255 / 0.35) 50%, transparent 65%)',
+                backgroundSize: '200% 100%',
+              }}
+            />
+          )}
           <span aria-hidden="true">▶</span> {running ? 'Simulating…' : 'Run simulation'}
         </button>
       </div>
       {clampedSlot !== slot && (
-        <p role="alert" className="font-bold text-red-800">
-          Slot must be between 1 and {teams}.
+        <p role="alert" className="font-bold text-bad">
+          <span aria-hidden="true">⚠️</span> Slot must be between 1 and {teams}.
         </p>
       )}
 
       {error && (
-        <div role="alert" className="rounded-xl border-2 border-amber-300 bg-amber-50 p-4">
-          <p className="font-bold">
+        <div role="alert" className="rounded-xl border-2 border-warn/50 bg-warn/10 p-4">
+          <p className="font-bold text-warn">
             <span aria-hidden="true">⏳</span> {error}
           </p>
           <button type="button" className="btn-secondary mt-3" onClick={run} disabled={running}>
@@ -106,91 +164,85 @@ export default function SimulatorPanel({ year, teams }: Props) {
       )}
 
       {result && (
-        <div data-testid="sim-result" className="space-y-4">
-          <p className="text-lg font-bold">
-            My total {result.my_total.toFixed(1)} vs league median {result.league_median.toFixed(1)}
-          </p>
-          <p className="text-slate-700">{verdictLine(result)}</p>
+        <div data-testid="sim-result" className="card-hero space-y-5">
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div>
+              <p className="font-bold text-ink-2">My total</p>
+              <p className="stat-number">{result.my_total.toFixed(1)}</p>
+            </div>
+            <div>
+              <p className="font-bold text-ink-2">League median</p>
+              <p className="stat-number">{result.league_median.toFixed(1)}</p>
+            </div>
+            <div>
+              <p className="font-bold text-ink-2">My total vs median</p>
+              <DeltaStat diff={result.my_total - result.league_median} />
+            </div>
+          </div>
+          <p className="font-bold">{verdictLine(result)}</p>
           {result.opponent_strategy !== 'adp' && (
-            <p className="rounded-xl bg-slate-100 p-3 text-slate-700">
+            <p className="rounded-xl border border-edge bg-raised/60 p-3 text-ink-2">
               <span aria-hidden="true">ℹ️</span> Opponents used a naive strategy — no ADP is
               cached for {result.season}, so their picks are a rough stand-in.
             </p>
           )}
-          <div className="overflow-x-auto">
+          <div className="table-shell overflow-x-auto">
             <table className="w-full text-left" aria-label="My simulated roster">
               <thead>
-                <tr className="border-b-2 border-slate-200">
-                  <th scope="col" className="py-2 pr-3">
-                    Round
-                  </th>
-                  <th scope="col" className="py-2 pr-3">
-                    Player
-                  </th>
-                  <th scope="col" className="py-2 pr-3">
-                    Pos
-                  </th>
-                  <th scope="col" className="py-2">
-                    Actual points
-                  </th>
+                <tr>
+                  <th scope="col">Round</th>
+                  <th scope="col">Player</th>
+                  <th scope="col">Pos</th>
+                  <th scope="col">Actual points</th>
                 </tr>
               </thead>
               <tbody>
                 {result.my_roster.map((pick) => (
-                  <tr key={pick.overall} className="border-b border-slate-100">
-                    <td className="py-2 pr-3 tabular-nums">{pick.round}</td>
-                    <th scope="row" className="py-2 pr-3 font-bold">
+                  <tr key={pick.overall}>
+                    <td className="tabular-nums">{pick.round}</td>
+                    <th scope="row" className="!static !bg-transparent !text-ink">
                       {pick.name}
                     </th>
-                    <td className="py-2 pr-3">{pick.position}</td>
-                    <td className="py-2 tabular-nums">{pick.points.toFixed(1)}</td>
+                    <td>
+                      <PositionChip position={pick.position} />
+                    </td>
+                    <td className="tabular-nums">{pick.points.toFixed(1)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          <details className="rounded-xl border-2 border-slate-200 p-4">
-            <summary className="cursor-pointer font-bold">
+          <details className="group rounded-xl border-2 border-edge/70 bg-bg/30">
+            <summary className="cursor-pointer select-none list-none px-4 py-3 font-bold [&::-webkit-details-marker]:hidden">
+              <span
+                aria-hidden="true"
+                className="mr-2 inline-block text-ink-3 transition-transform group-open:rotate-90"
+              >
+                ▶
+              </span>
               Full pick log ({result.log.length} picks)
             </summary>
-            <div className="mt-3 max-h-96 overflow-auto">
+            <div className="table-shell max-h-96 overflow-auto border-t border-edge/60 px-4 pb-4">
               <table className="w-full text-left" aria-label="Full pick log">
                 <thead>
-                  <tr className="border-b-2 border-slate-200">
-                    <th scope="col" className="py-1 pr-3">
-                      Pick
-                    </th>
-                    <th scope="col" className="py-1 pr-3">
-                      Rd
-                    </th>
-                    <th scope="col" className="py-1 pr-3">
-                      Team
-                    </th>
-                    <th scope="col" className="py-1 pr-3">
-                      Player
-                    </th>
-                    <th scope="col" className="py-1 pr-3">
-                      Pos
-                    </th>
-                    <th scope="col" className="py-1">
-                      Points
-                    </th>
+                  <tr>
+                    <th scope="col">Pick</th>
+                    <th scope="col">Rd</th>
+                    <th scope="col">Team</th>
+                    <th scope="col">Player</th>
+                    <th scope="col">Pos</th>
+                    <th scope="col">Points</th>
                   </tr>
                 </thead>
                 <tbody>
                   {result.log.map((pick) => (
-                    <tr
-                      key={pick.overall}
-                      className={`border-b border-slate-100 ${pick.is_me ? 'bg-blue-50 font-bold' : ''}`}
-                    >
-                      <td className="py-1 pr-3 tabular-nums">{pick.overall}</td>
-                      <td className="py-1 pr-3 tabular-nums">{pick.round}</td>
-                      <td className="py-1 pr-3">
-                        {pick.is_me ? 'Me' : `Team ${pick.team_index}`}
-                      </td>
-                      <td className="py-1 pr-3">{pick.name}</td>
-                      <td className="py-1 pr-3">{pick.position}</td>
-                      <td className="py-1 tabular-nums">{pick.points.toFixed(1)}</td>
+                    <tr key={pick.overall} className={pick.is_me ? 'bg-accent/10 font-bold' : ''}>
+                      <td className="tabular-nums">{pick.overall}</td>
+                      <td className="tabular-nums">{pick.round}</td>
+                      <td>{pick.is_me ? 'Me' : `Team ${pick.team_index}`}</td>
+                      <td>{pick.name}</td>
+                      <td>{pick.position}</td>
+                      <td className="tabular-nums">{pick.points.toFixed(1)}</td>
                     </tr>
                   ))}
                 </tbody>

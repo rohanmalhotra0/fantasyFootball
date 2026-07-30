@@ -11,6 +11,7 @@ ROUTER_MODULES = (
     "routes_voice",
     "routes_admin",
     "routes_analysis",
+    "routes_players",
 )
 
 
