@@ -16,8 +16,9 @@ permissions:
   pages: write
   id-token: write
 
+# Per-ref group: a PR-branch smoke build must never cancel main's deploy.
 concurrency:
-  group: pages
+  group: pages-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
