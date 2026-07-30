@@ -11,9 +11,10 @@ from dataclasses import dataclass
 
 import pandas as pd
 from fastapi import HTTPException
-from sqlalchemy import select
+from sqlalchemy import select, text
+from sqlalchemy.exc import IntegrityError, OperationalError
 
-from ..db import init_db, session_scope
+from ..db import get_engine, init_db, session_scope
 from ..league import LeagueSettings, load_settings
 from ..names import normalize_name
 from ..orm import Draft, Pick
@@ -34,6 +35,38 @@ POOL_OPTIONAL_COLUMNS = (
 # Serializes draft mutations so two concurrent requests can never both
 # claim the same overall pick number.
 _write_lock = threading.Lock()
+
+# Where a pick may come from. Anything else (fuzz, typos, 10k-char junk)
+# is rejected before it can be persisted.
+VALID_PICK_SOURCES = ("manual", "voice", "sim")
+
+# Belt-and-suspenders uniqueness: the module lock serializes writers in
+# THIS process; these DB indexes make the invariants (one pick per overall
+# slot, one pick per player, per draft) hold even against a second writer
+# process. IF NOT EXISTS keeps them migration-safe on existing databases
+# (orm.py belongs to another workstream, so the indexes are created here
+# rather than as table-level constraints).
+_PICK_INDEX_DDL = (
+    "CREATE UNIQUE INDEX IF NOT EXISTS ux_picks_draft_overall ON picks (draft_id, overall)",
+    "CREATE UNIQUE INDEX IF NOT EXISTS ux_picks_draft_player ON picks (draft_id, player_id)",
+)
+
+
+def ensure_pick_indexes() -> None:
+    """Create the unique pick indexes once per DB engine (idempotent)."""
+    engine_ = get_engine()
+    if getattr(engine_, "_pick_indexes_ready", False):
+        return
+    init_db()
+    try:
+        with engine_.begin() as conn:
+            for ddl in _PICK_INDEX_DDL:
+                conn.execute(text(ddl))
+    except OperationalError:
+        # A legacy DB that already contains duplicate rows cannot take the
+        # unique index; the write lock still guarantees in-process safety.
+        pass
+    engine_._pick_indexes_ready = True
 
 
 # ---------- small value helpers (shared by recommend/grade) ----------
@@ -284,51 +317,68 @@ def make_pick(
     source: str = "manual",
 ) -> dict:
     """Record the next pick. Commits before returning state to broadcast."""
+    if source not in VALID_PICK_SOURCES:
+        # Reject before touching the DB: nothing absurd may be persisted.
+        shown = source if len(source) <= 40 else source[:40] + "…"
+        raise HTTPException(
+            status_code=422,
+            detail=f"invalid pick source {shown!r} — expected one of {VALID_PICK_SOURCES}",
+        )
     with _write_lock:
-        with session_scope() as session:
-            draft = _get_draft(session, draft_id)
-            settings = LeagueSettings.model_validate(draft.settings)
-            teams = settings.teams
-            total = teams * draft.rounds
-            picks = sorted(draft.picks, key=lambda p: p.overall)
-            if draft.status == "complete" or len(picks) >= total:
-                raise HTTPException(
-                    status_code=409, detail="draft is complete — undo a pick to make changes"
+        ensure_pick_indexes()
+        try:
+            with session_scope() as session:
+                draft = _get_draft(session, draft_id)
+                settings = LeagueSettings.model_validate(draft.settings)
+                teams = settings.teams
+                total = teams * draft.rounds
+                picks = sorted(draft.picks, key=lambda p: p.overall)
+                if draft.status == "complete" or len(picks) >= total:
+                    raise HTTPException(
+                        status_code=409, detail="draft is complete — undo a pick to make changes"
+                    )
+                overall = len(picks) + 1
+                on_clock = overall_to_team(overall, teams)
+                if team_index is not None and team_index != on_clock:
+                    raise HTTPException(
+                        status_code=409,
+                        detail=(
+                            f"Team {team_index} is not on the clock — "
+                            f"{settings.team_name(on_clock)} (team {on_clock}) is on the clock"
+                        ),
+                    )
+                pool = ensure_pool_columns(get_player_pool(settings))
+                player = resolve_player(pool, player_id, player_name)
+                dupe = next((p for p in picks if p.player_id == player["player_id"]), None)
+                if dupe is not None:
+                    raise HTTPException(
+                        status_code=409,
+                        detail=(
+                            f"{player['name']} was already picked "
+                            f"(overall #{dupe.overall} by {settings.team_name(dupe.team_index)})"
+                        ),
+                    )
+                session.add(
+                    Pick(
+                        draft_id=draft_id,
+                        overall=overall,
+                        round=overall_to_round(overall, teams),
+                        team_index=on_clock,
+                        player_id=player["player_id"],
+                        player_name=player["name"],
+                        position=player["position"],
+                        source=source,
+                    )
                 )
-            overall = len(picks) + 1
-            on_clock = overall_to_team(overall, teams)
-            if team_index is not None and team_index != on_clock:
-                raise HTTPException(
-                    status_code=409,
-                    detail=(
-                        f"Team {team_index} is not on the clock — "
-                        f"{settings.team_name(on_clock)} (team {on_clock}) is on the clock"
-                    ),
-                )
-            pool = ensure_pool_columns(get_player_pool(settings))
-            player = resolve_player(pool, player_id, player_name)
-            dupe = next((p for p in picks if p.player_id == player["player_id"]), None)
-            if dupe is not None:
-                raise HTTPException(
-                    status_code=409,
-                    detail=(
-                        f"{player['name']} was already picked "
-                        f"(overall #{dupe.overall} by {settings.team_name(dupe.team_index)})"
-                    ),
-                )
-            session.add(
-                Pick(
-                    draft_id=draft_id,
-                    overall=overall,
-                    round=overall_to_round(overall, teams),
-                    team_index=on_clock,
-                    player_id=player["player_id"],
-                    player_name=player["name"],
-                    position=player["position"],
-                    source=source,
-                )
-            )
-        # Transaction committed here (session_scope exit) — safe to snapshot.
+            # Transaction committed here (session_scope exit) — safe to snapshot.
+        except IntegrityError as exc:
+            # Invariant: picks are unique per (draft, overall) and per
+            # (draft, player). The write lock makes this unreachable from a
+            # single process; the DB index net catches a concurrent writer
+            # from another process — surface it as the same 409.
+            raise HTTPException(
+                status_code=409, detail="pick conflict — that slot or player was just taken"
+            ) from exc
     return get_state(draft_id)
 
 
@@ -354,34 +404,43 @@ def edit_pick(
 ) -> dict:
     """Replace the player on an existing pick (fix a mis-logged pick)."""
     with _write_lock:
-        with session_scope() as session:
-            draft = _get_draft(session, draft_id)
-            settings = LeagueSettings.model_validate(draft.settings)
-            picks = sorted(draft.picks, key=lambda p: p.overall)
-            target = next((p for p in picks if p.overall == overall), None)
-            if target is None:
-                raise HTTPException(
-                    status_code=404, detail=f"no pick at overall #{overall} in draft {draft_id}"
-                )
-            pool = ensure_pool_columns(get_player_pool(settings))
-            player = resolve_player(pool, player_id, player_name)
-            dupe = next(
-                (
-                    p
-                    for p in picks
-                    if p.player_id == player["player_id"] and p.overall != overall
-                ),
-                None,
-            )
-            if dupe is not None:
-                raise HTTPException(
-                    status_code=409,
-                    detail=(
-                        f"{player['name']} was already picked "
-                        f"(overall #{dupe.overall} by {settings.team_name(dupe.team_index)})"
+        ensure_pick_indexes()
+        try:
+            with session_scope() as session:
+                draft = _get_draft(session, draft_id)
+                settings = LeagueSettings.model_validate(draft.settings)
+                picks = sorted(draft.picks, key=lambda p: p.overall)
+                target = next((p for p in picks if p.overall == overall), None)
+                if target is None:
+                    raise HTTPException(
+                        status_code=404,
+                        detail=f"no pick at overall #{overall} in draft {draft_id}",
+                    )
+                pool = ensure_pool_columns(get_player_pool(settings))
+                player = resolve_player(pool, player_id, player_name)
+                dupe = next(
+                    (
+                        p
+                        for p in picks
+                        if p.player_id == player["player_id"] and p.overall != overall
                     ),
+                    None,
                 )
-            target.player_id = player["player_id"]
-            target.player_name = player["name"]
-            target.position = player["position"]
+                if dupe is not None:
+                    raise HTTPException(
+                        status_code=409,
+                        detail=(
+                            f"{player['name']} was already picked "
+                            f"(overall #{dupe.overall} by {settings.team_name(dupe.team_index)})"
+                        ),
+                    )
+                target.player_id = player["player_id"]
+                target.player_name = player["name"]
+                target.position = player["position"]
+        except IntegrityError as exc:
+            # Same invariant as make_pick: the DB uniqueness net converts a
+            # cross-process race into a clean conflict, never a 500.
+            raise HTTPException(
+                status_code=409, detail="pick conflict — that player was just taken"
+            ) from exc
     return get_state(draft_id)

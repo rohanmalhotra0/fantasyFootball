@@ -13,8 +13,6 @@ Confidence policy (prime directive: no confident wrong answer silently):
 
 from __future__ import annotations
 
-import inspect
-
 from fastapi import APIRouter, HTTPException
 
 from ..voice.matching import match_player
@@ -28,6 +26,11 @@ AUTO_COMMIT_LEAD = 0.08
 MATCH_FLOOR = 0.60
 ALTERNATIVE_FLOOR = 0.45
 NO_MATCH_REASON = "No confident match — try the full name"
+# Invariant: fuzzy/phonetic matching cost is bounded. Real STT utterances
+# are sentences; anything longer is garbage, so it is truncated before the
+# O(len * pool) matching layers run (a 50k-char body must never tie up a
+# worker for seconds).
+MAX_UTTERANCE_CHARS = 500
 
 
 def _engine():
@@ -50,17 +53,15 @@ def _get_state(draft_id: int):
 
 
 def _get_player_pool(draft_id: int):
+    """Pool for the draft's frozen settings snapshot.
+
+    Invariant: voice matches against the SAME pool the pick endpoint will
+    validate against — the settings-aware board (including ADP-only
+    rookies), never a fallback pool built from a bogus argument.
+    """
     engine = _engine()
-    fn = engine.get_player_pool
-    try:
-        params = [
-            p
-            for p in inspect.signature(fn).parameters.values()
-            if p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD) and p.default is p.empty
-        ]
-    except (TypeError, ValueError):  # pragma: no cover - exotic callables
-        params = []
-    return fn(draft_id) if params else fn()
+    settings = engine.get_context(draft_id).settings
+    return engine.get_player_pool(settings)
 
 
 def _no_match(team_index, explicit_team, reason: str) -> VoiceParseResponse:
@@ -87,7 +88,9 @@ def parse_voice(draft_id: int, req: VoiceParseRequest) -> VoiceParseResponse:
     teams = int(state.get("teams") or 12)
     on_clock_team = state.get("on_clock_team")
 
-    parsed = parse_utterance(req.utterance, team_names, teams)
+    # Bounded compute: see MAX_UTTERANCE_CHARS.
+    utterance = (req.utterance or "")[:MAX_UTTERANCE_CHARS]
+    parsed = parse_utterance(utterance, team_names, teams)
     explicit_team = bool(parsed["explicit_team"])
     team_index = parsed["team_index"] if explicit_team else on_clock_team
 
