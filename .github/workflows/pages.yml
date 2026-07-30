@@ -88,9 +88,10 @@ jobs:
   deploy:
     needs: build
     # Skipped (not failed) until the repo owner enables Pages once in
-    # Settings -> Pages -> Source: GitHub Actions. The workflow token is
-    # not allowed to create the site itself.
-    if: needs.build.outputs.pages_enabled == 'true'
+    # Settings -> Pages -> Source: GitHub Actions. Deploys only from main:
+    # the github-pages environment protection rejects other branches (PR
+    # branches still build the artifact as a smoke test).
+    if: needs.build.outputs.pages_enabled == 'true' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
