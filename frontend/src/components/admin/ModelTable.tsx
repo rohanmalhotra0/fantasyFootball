@@ -173,7 +173,10 @@ export default function ModelTable({ versions, onVersions }: Props) {
                       </td>
                       <td className="align-top">
                         {v.active ? (
-                          <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border-2 border-good/60 bg-good/15 px-3 py-1 font-bold uppercase tracking-wide text-good">
+                          // light theme uses a fainter tint: good text on
+                          // good/15 over white measured 4.4:1 (< 4.5, WCAG
+                          // 1.4.3); good/5 keeps the look and clears the bar.
+                          <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border-2 border-good/60 bg-good/5 px-3 py-1 font-bold uppercase tracking-wide text-good dark:bg-good/15">
                             <span aria-hidden="true">✓</span> active
                           </span>
                         ) : (

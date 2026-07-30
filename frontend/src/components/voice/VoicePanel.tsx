@@ -56,6 +56,15 @@ export default function VoicePanel({ draftId, onCommitted, myTurn }: VoicePanelP
   const [pending, setPending] = useState<PendingToast | null>(null)
   const [speakEnabled, setSpeakEnabled] = useState(loadSpeakEnabled)
 
+  const unavailableRef = useRef<HTMLElement | null>(null)
+
+  // When the mic gets blocked, the toggle the user just pressed unmounts.
+  // Move focus onto the replacement card so keyboard users don't fall back
+  // to <body> (and screen readers hear the explanation).
+  useEffect(() => {
+    if (micBlocked) unavailableRef.current?.focus()
+  }, [micBlocked])
+
   const recognizerRef = useRef<Recognizer | null>(null)
   /** Monotonic id per heard utterance; a toast is only committable while it
    *  is still the latest utterance (never double-commit / commit stale). */
@@ -235,6 +244,8 @@ export default function VoicePanel({ draftId, onCommitted, myTurn }: VoicePanelP
   if (!supported || micBlocked) {
     return (
       <section
+        ref={unavailableRef}
+        tabIndex={-1}
         className="card space-y-2"
         data-testid="voice-unavailable"
         aria-label="Voice picks unavailable"

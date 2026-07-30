@@ -42,6 +42,10 @@ export default function PickTimer({ resetKey, seconds = 90 }: PickTimerProps) {
     <section
       data-testid="pick-timer"
       aria-label="Pick timer"
+      // The timer lives inside the banner's aria-live="polite" region; without
+      // this "off" every 1-second tick would be spoken by screen readers
+      // (WCAG 4.1.3 — the expiry "TIME" keeps its own role="status").
+      aria-live="off"
       className="flex flex-col items-center gap-3 rounded-2xl border border-edge/60 bg-bg/40 px-5 py-4"
     >
       {expired ? (

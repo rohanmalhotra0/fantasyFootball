@@ -20,6 +20,8 @@ import type { Heatmap } from '../../lib/types'
  */
 interface Props {
   title: string
+  /** Decorative emoji shown before the title (aria-hidden). */
+  icon?: string
   heatmap: Heatmap
   scale: 'diverging' | 'sequential'
   format: 'number' | 'percent'
@@ -70,7 +72,7 @@ function LegendStrip({
   )
 }
 
-export default function HeatmapGrid({ title, heatmap, scale, format, testId }: Props) {
+export default function HeatmapGrid({ title, icon, heatmap, scale, format, testId }: Props) {
   const flat = heatmap.values.flat().filter((v): v is number => v !== null)
   const maxAbs = Math.max(...flat.map((v) => Math.abs(v)), 1e-9)
 
@@ -114,7 +116,14 @@ export default function HeatmapGrid({ title, heatmap, scale, format, testId }: P
   return (
     <section className="card space-y-4" data-testid={testId} aria-label={title}>
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-        <h2 className="section-title">{title}</h2>
+        <h2 className="section-title">
+          {icon && (
+            <>
+              <span aria-hidden="true">{icon}</span>{' '}
+            </>
+          )}
+          {title}
+        </h2>
         {flat.length > 0 && <LegendStrip scale={scale} maxAbs={maxAbs} format={format} />}
       </div>
       {summary && <p className="text-ink-2">{summary}</p>}

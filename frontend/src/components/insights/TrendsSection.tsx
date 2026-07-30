@@ -163,7 +163,7 @@ export default function TrendsSection({ data, error }: Props) {
       {!data && !error && <div className="skeleton h-64" />}
       {data && (
         <>
-          <div className="grid gap-6 xl:grid-cols-2">
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
             <div className="card space-y-3">
               <h3 className="section-title">Share of league PPR points</h3>
               <Takeaway text={shareTakeaway(seasons)} />

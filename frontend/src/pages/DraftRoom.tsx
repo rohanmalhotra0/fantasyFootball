@@ -46,9 +46,16 @@ function draftProgressLabel(d: DraftListItem): string {
 function Lobby() {
   const navigate = useNavigate()
   const [drafts, setDrafts] = useState<DraftListItem[] | null>(null)
+  const [showAll, setShowAll] = useState(false)
   const [settings, setSettings] = useState<SettingsResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
+
+  // Route announcement for screen readers + tab identity (WCAG 2.4.2).
+  // The live Room's title is owned by OnClockBanner (pick-by-pick).
+  useEffect(() => {
+    document.title = 'Draft Room — DraftEngine'
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -141,7 +148,7 @@ function Lobby() {
           <p className="card text-ink-3">No drafts yet — start your first one above.</p>
         ) : (
           <ul className="space-y-3">
-            {drafts.map((d) => (
+            {(showAll ? drafts : drafts.slice(0, 6)).map((d) => (
               <li key={d.id} className="card animate-slide-up flex flex-wrap items-center gap-4">
                 <div>
                   <p className="flex items-center gap-2 font-display text-lg font-bold">
@@ -181,6 +188,11 @@ function Lobby() {
             ))}
           </ul>
         )}
+        {drafts != null && drafts.length > 6 && !showAll && (
+          <button type="button" className="btn-secondary" onClick={() => setShowAll(true)}>
+            <span aria-hidden="true">▾</span> Show all {drafts.length} drafts
+          </button>
+        )}
       </section>
     </div>
   )
@@ -209,7 +221,7 @@ function RoomSkeleton() {
     <div aria-busy="true" aria-label="Loading draft room" className="space-y-6">
       <div className="skeleton h-40" />
       <div className="skeleton h-10" />
-      <div className="grid gap-6 lg:grid-cols-[1fr_22rem]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_22rem]">
         <div className="space-y-4">
           <div className="skeleton h-44" />
           <div className="skeleton h-44" />
@@ -406,6 +418,9 @@ function Room({ draftId }: { draftId: number }) {
 
   return (
     <div className="space-y-6">
+      {/* The banner's "Pick N" line is visually the headline; this gives the
+          page its one h1 for the heading outline (WCAG 1.3.1 / 2.4.6). */}
+      <h1 className="sr-only">Live draft room — draft #{draftId}</h1>
       {error && (
         <ErrorAlert>
           <p className="text-lg font-bold text-bad">
@@ -448,13 +463,13 @@ function Room({ draftId }: { draftId: number }) {
           </p>
         )
       ) : (
-        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
           <div className="space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div
                 role="tablist"
                 aria-label="Draft views"
-                className="inline-flex gap-1 rounded-xl border border-edge bg-surface/80 p-1 backdrop-blur-sm"
+                className="inline-flex max-w-full gap-1 overflow-x-auto rounded-xl border border-edge bg-surface/80 p-1 backdrop-blur-sm"
               >
                 {TABS.map((t) => (
                   <button
@@ -465,7 +480,7 @@ function Room({ draftId }: { draftId: number }) {
                     data-testid={`tab-${t.id}`}
                     aria-selected={tab === t.id}
                     aria-controls={`panel-${t.id}`}
-                    className={`flex items-center gap-2 rounded-lg px-4 py-2 text-lg font-bold transition-colors ${
+                    className={`flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-base font-bold transition-colors sm:px-4 sm:text-lg ${
                       tab === t.id
                         ? 'bg-accent text-bg shadow-glow-sm'
                         : 'text-ink-2 hover:bg-raised hover:text-ink'

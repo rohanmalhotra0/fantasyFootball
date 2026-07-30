@@ -35,16 +35,16 @@ function LoadingSkeleton() {
   return (
     <div aria-busy="true" aria-label="Loading dashboard" className="space-y-6">
       <div className="skeleton h-14 w-full max-w-md" />
-      <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
         {[0, 1, 2, 3].map((i) => (
           <div key={i} className="skeleton h-44" />
         ))}
       </div>
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="skeleton h-80 lg:col-span-2" />
         <div className="skeleton h-80" />
       </div>
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div className="skeleton h-96" />
         <div className="skeleton h-96" />
       </div>
@@ -52,15 +52,25 @@ function LoadingSkeleton() {
   )
 }
 
-function EmptyHeatmapCard({ title, testId }: { title: string; testId: string }) {
+function EmptyHeatmapCard({
+  title,
+  icon,
+  testId,
+}: {
+  title: string
+  icon: string
+  testId: string
+}) {
   return (
     <section
-      className="card space-y-4 border-dashed"
+      className="card flex min-h-[16rem] flex-col gap-4 border-dashed"
       data-testid={testId}
       aria-label={title}
     >
-      <h2 className="section-title">{title}</h2>
-      <div className="flex items-center gap-4 rounded-xl bg-raised/50 p-5 text-ink-2">
+      <h2 className="section-title">
+        <span aria-hidden="true">{icon}</span> {title}
+      </h2>
+      <div className="flex flex-1 items-center justify-center gap-4 rounded-xl bg-raised/50 p-5 text-ink-2">
         <span aria-hidden="true" className="text-2xl">
           📭
         </span>
@@ -98,6 +108,11 @@ export default function Dashboard() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const navigate = useNavigate()
+
+  // Route announcement for screen readers + tab identity (WCAG 2.4.2).
+  useEffect(() => {
+    document.title = 'Home — DraftEngine'
+  }, [])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -184,7 +199,7 @@ export default function Dashboard() {
       </section>
 
       {/* Hero stat tiles */}
-      <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
         <section
           className="card-hero space-y-2 animate-slide-up"
           aria-label="Model accuracy"
@@ -254,7 +269,7 @@ export default function Dashboard() {
       </div>
 
       {/* Scoreboard + status column */}
-      <div className="grid items-start gap-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
         <section
           className="card-hero space-y-3 animate-slide-up lg:col-span-2"
           aria-label="Model check"
@@ -327,28 +342,34 @@ export default function Dashboard() {
       </div>
 
       {/* Round-by-round heatmaps */}
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {data.vorp_heatmap ? (
           <HeatmapGrid
             title="What each round actually returned"
+            icon="💰"
             heatmap={data.vorp_heatmap}
             scale="diverging"
             format="number"
             testId="vorp-heatmap"
           />
         ) : (
-          <EmptyHeatmapCard title="What each round actually returned" testId="vorp-heatmap" />
+          <EmptyHeatmapCard
+            title="What each round actually returned"
+            icon="💰"
+            testId="vorp-heatmap"
+          />
         )}
         {data.hit_rate_heatmap ? (
           <HeatmapGrid
             title="How often picks paid off"
+            icon="✅"
             heatmap={data.hit_rate_heatmap}
             scale="sequential"
             format="percent"
             testId="hit-rate-heatmap"
           />
         ) : (
-          <EmptyHeatmapCard title="How often picks paid off" testId="hit-rate-heatmap" />
+          <EmptyHeatmapCard title="How often picks paid off" icon="✅" testId="hit-rate-heatmap" />
         )}
       </div>
     </div>

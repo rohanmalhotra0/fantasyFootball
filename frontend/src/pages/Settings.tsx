@@ -53,6 +53,11 @@ export default function Settings() {
   const [saveError, setSaveError] = useState<string | null>(null)
   const [namesOpen, setNamesOpen] = useState(false)
 
+  // Route announcement for screen readers + tab identity (WCAG 2.4.2).
+  useEffect(() => {
+    document.title = 'League Settings — DraftEngine'
+  }, [])
+
   useEffect(() => {
     api
       .getSettings()
@@ -173,7 +178,9 @@ export default function Settings() {
               <label
                 key={p.id}
                 data-testid={`scoring-preset-${p.id}`}
-                className={`relative cursor-pointer rounded-2xl border-2 p-5 transition-all ${
+                // The real radio is sr-only, so the card must show the focus
+                // ring itself or keyboard focus is invisible (WCAG 2.4.7).
+                className={`relative cursor-pointer rounded-2xl border-2 p-5 transition-all has-[:focus-visible]:outline has-[:focus-visible]:outline-[3px] has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent ${
                   selected
                     ? 'border-accent bg-accent/10 shadow-glow-sm'
                     : 'border-edge bg-raised/40 hover:border-accent/50 hover:bg-raised/70'
@@ -210,6 +217,30 @@ export default function Settings() {
       <section className="card animate-slide-up space-y-5" aria-label="Roster">
         <h2 className="section-title text-2xl">Roster</h2>
         <RosterEditor roster={form.roster} onChange={(roster) => update({ roster })} />
+        {/* Live proof the value math follows the roster + scoring above. */}
+        <div
+          data-testid="replacement-preview"
+          className="space-y-2 rounded-2xl border border-edge/70 bg-raised/40 p-4"
+        >
+          <p className="text-base font-bold uppercase tracking-[0.14em] text-ink-3">
+            Replacement level
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {replacementCounts.map(({ pos, count }) => (
+              <span
+                key={`${pos}${count}`}
+                className="chip animate-slide-up border border-edge bg-surface/80 font-display text-ink tabular-nums"
+              >
+                {pos}
+                {count}
+              </span>
+            ))}
+          </div>
+          <p className="text-base text-ink-3">
+            Last startable player per position — VORP measures against these. Updates when you
+            save.
+          </p>
+        </div>
       </section>
 
       <section className="card animate-slide-up space-y-5" aria-label="Draft">
@@ -283,9 +314,9 @@ export default function Settings() {
         </p>
       )}
 
-      {/* Sticky footer: the one primary action + live proof of the value math */}
-      <div className="sticky bottom-0 z-10 -mx-4 border-t border-edge/70 bg-bg/85 px-4 py-4 shadow-[0_-16px_40px_-18px_rgb(var(--de-accent)/0.35)] backdrop-blur-md">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-6 gap-y-3">
+      {/* Slim sticky footer: just the one primary action + its confirmation. */}
+      <div className="sticky bottom-0 z-10 -mx-4 border-t border-edge/70 bg-bg/85 px-4 py-3 shadow-[0_-16px_40px_-18px_rgb(var(--de-accent)/0.35)] backdrop-blur-md">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-6 gap-y-2">
           <button
             type="button"
             data-testid="save-settings"
@@ -296,27 +327,12 @@ export default function Settings() {
             <span aria-hidden="true">💾</span> {saving ? 'Saving…' : 'Save settings'}
           </button>
           {saved && (
-            <p data-testid="settings-saved" className="text-lg font-bold text-good">
+            // role=status: the confirmation is announced, not just shown
+            // (WCAG 4.1.3 status messages).
+            <p data-testid="settings-saved" role="status" className="text-lg font-bold text-good">
               ✓ Saved — VORP updated everywhere
             </p>
           )}
-          <div data-testid="replacement-preview" className="card-hero min-w-[16rem] flex-1 space-y-2 p-4">
-            <p className="font-bold uppercase tracking-[0.14em] text-ink-3">Replacement level</p>
-            <div className="flex flex-wrap gap-2">
-              {replacementCounts.map(({ pos, count }) => (
-                <span
-                  key={`${pos}${count}`}
-                  className="chip animate-slide-up border border-edge bg-raised/60 font-display text-ink tabular-nums"
-                >
-                  {pos}
-                  {count}
-                </span>
-              ))}
-            </div>
-            <p className="text-base text-ink-3">
-              Last startable player per position — VORP measures against these.
-            </p>
-          </div>
         </div>
       </div>
     </div>

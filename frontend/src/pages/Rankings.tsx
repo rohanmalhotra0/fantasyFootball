@@ -37,6 +37,11 @@ export default function Rankings() {
   const [showHidden, setShowHidden] = useState(false)
   const [selected, setSelected] = useState<BoardPlayer | null>(null)
 
+  // Route announcement for screen readers + tab identity (WCAG 2.4.2).
+  useEffect(() => {
+    document.title = 'Big Board — DraftEngine'
+  }, [])
+
   useEffect(() => {
     api
       .rankings()
@@ -162,7 +167,7 @@ export default function Rankings() {
             <label htmlFor="board-search" className="sr-only">
               Search players by name or team
             </label>
-            <span className="relative">
+            <span className="relative w-80 max-w-full">
               <span
                 aria-hidden="true"
                 className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-3"
@@ -176,7 +181,7 @@ export default function Rankings() {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search name or team"
-                className="w-80 max-w-full rounded-xl border-2 border-edge bg-raised/60 py-2.5 pl-11 pr-4 text-lg text-ink placeholder:text-ink-3 focus:border-accent/70"
+                className="w-full rounded-xl border-2 border-edge bg-raised/60 py-2.5 pl-11 pr-4 text-lg text-ink placeholder:text-ink-3 focus:border-accent/70"
               />
             </span>
             {query && (
@@ -256,7 +261,9 @@ export default function Rankings() {
         </div>
       </div>
 
-      <p className="text-lg font-bold text-ink-2">
+      {/* role=status: filter/search result counts announce to screen readers
+          (WCAG 4.1.3 status messages). */}
+      <p role="status" className="text-lg font-bold text-ink-2">
         Showing {visible.length} of {active.length} players
       </p>
 

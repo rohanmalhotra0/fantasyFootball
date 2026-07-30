@@ -56,6 +56,12 @@ function ThemeToggle() {
 export default function App() {
   return (
     <div className="min-h-screen">
+      <a
+        href="#main"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-xl focus:bg-accent focus:px-4 focus:py-2 focus:font-bold focus:text-bg"
+      >
+        Skip to content
+      </a>
       <header className="sticky top-0 z-40 border-b border-edge/60 bg-bg/80 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center gap-4 px-4">
           <NavLink to="/" className="flex shrink-0 items-center gap-2 py-3" aria-label="DraftEngine home">
@@ -77,7 +83,7 @@ export default function App() {
                     to={item.to}
                     end={item.to === '/'}
                     className={({ isActive }) =>
-                      `flex items-center gap-2 whitespace-nowrap rounded-xl px-3.5 py-2 text-lg font-bold transition-colors ${
+                      `flex items-center gap-2 whitespace-nowrap rounded-xl px-3 py-2 text-base font-bold transition-colors ${
                         isActive
                           ? 'bg-accent/15 text-accent shadow-glow-sm'
                           : 'text-ink-2 hover:bg-raised/70 hover:text-ink'
@@ -102,7 +108,7 @@ export default function App() {
           📖 Read-only demo — data is a snapshot; edits and drafting are off
         </p>
       )}
-      <main className="mx-auto max-w-7xl px-4 py-8">
+      <main id="main" tabIndex={-1} className="mx-auto max-w-7xl px-4 py-8 outline-none">
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/backtest" element={<Backtest />} />

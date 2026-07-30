@@ -93,6 +93,11 @@ export default function Backtest() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
+  // Route announcement for screen readers + tab identity (WCAG 2.4.2).
+  useEffect(() => {
+    document.title = 'Backtests — DraftEngine'
+  }, [])
+
   useEffect(() => {
     api
       .backtestYears()
@@ -193,7 +198,7 @@ export default function Backtest() {
       )}
 
       {loading && !data && !error && (
-        <div aria-busy="true" aria-label="Loading backtest" className="grid gap-6 lg:grid-cols-2">
+        <div aria-busy="true" aria-label="Loading backtest" className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <div className="skeleton h-96" />
           <div className="skeleton h-96" />
         </div>
@@ -201,7 +206,7 @@ export default function Backtest() {
 
       {data && (
         <>
-          <div className="grid animate-slide-up gap-6 lg:grid-cols-2">
+          <div className="grid grid-cols-1 animate-slide-up gap-6 lg:grid-cols-2">
             <RankScatter
               title={`Model rank vs actual finish, ${data.season}`}
               xLabel="Model rank"
@@ -223,19 +228,24 @@ export default function Backtest() {
               />
             ) : (
               <section
-                className="card space-y-3 self-start"
+                className="card flex min-h-[20rem] flex-col gap-3"
                 data-testid="adp-scatter"
                 aria-label="ADP rank vs actual finish"
               >
                 <h2 className="section-title">ADP rank vs actual finish, {data.season}</h2>
-                <p className="text-ink-2">
-                  <span aria-hidden="true">📭</span> {NO_ADP_MESSAGE}
-                </p>
+                <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed border-edge/70 bg-raised/30 p-6">
+                  <p className="max-w-sm text-center text-ink-2">
+                    <span aria-hidden="true" className="block text-3xl">
+                      📭
+                    </span>
+                    {NO_ADP_MESSAGE}
+                  </p>
+                </div>
               </section>
             )}
           </div>
 
-          <div className="grid animate-slide-up gap-6 lg:grid-cols-2">
+          <div className="grid grid-cols-1 animate-slide-up gap-6 lg:grid-cols-2">
             <HitsBustsTable
               title="Hits — model found value"
               rows={data.hits}

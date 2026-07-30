@@ -154,7 +154,7 @@ export default function AgingCurvesSection({ data, error }: Props) {
       {!data && !error && <div className="skeleton h-56" />}
       {data && (
         <>
-          <div className="grid gap-6 lg:grid-cols-2">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             {data.positions.map((curve) => (
               <CurveCard key={curve.position} curve={curve} />
             ))}

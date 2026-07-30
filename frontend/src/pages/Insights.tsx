@@ -17,6 +17,11 @@ export default function Insights() {
   const [trends, setTrends] = useState<TrendsResponse | null>(null)
   const [trendsError, setTrendsError] = useState<string | null>(null)
 
+  // Route announcement for screen readers + tab identity (WCAG 2.4.2).
+  useEffect(() => {
+    document.title = 'Insights — DraftEngine'
+  }, [])
+
   useEffect(() => {
     api
       .analysisAging()

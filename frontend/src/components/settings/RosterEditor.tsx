@@ -21,7 +21,7 @@ export function Stepper({ label, value, min, max, onChange, testId }: StepperPro
     'grid h-12 w-12 shrink-0 place-items-center rounded-xl border-2 border-edge bg-raised/60 font-display text-2xl font-bold text-ink transition-colors hover:border-accent/60 hover:bg-raised active:scale-95 disabled:opacity-40 disabled:hover:border-edge disabled:hover:bg-raised/60'
   return (
     <div className="flex items-center gap-3">
-      <span id={`${testId}-label`} className="w-28 shrink-0 text-lg font-bold">
+      <span id={`${testId}-label`} className="w-20 shrink-0 text-lg font-bold sm:w-28">
         {label}
       </span>
       <button

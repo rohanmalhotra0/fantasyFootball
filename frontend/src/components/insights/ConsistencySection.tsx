@@ -216,7 +216,7 @@ export default function ConsistencySection({ seasons }: Props) {
       {loading && !data && <div className="skeleton h-64" />}
 
       {data && (
-        <div className="grid gap-6 xl:grid-cols-2">
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
           <div className="card space-y-3">
             <h3 className="section-title">Player profiles, {data.season}</h3>
             <p className="text-ink-2">

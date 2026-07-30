@@ -14,6 +14,11 @@ export default function Admin() {
   const [modelsError, setModelsError] = useState<string | null>(null)
   const [adpErrors, setAdpErrors] = useState<Record<string, string>>({})
 
+  // Route announcement for screen readers + tab identity (WCAG 2.4.2).
+  useEffect(() => {
+    document.title = 'Data & models — DraftEngine'
+  }, [])
+
   const loadModels = useCallback(async () => {
     try {
       const resp = await api.adminModels()

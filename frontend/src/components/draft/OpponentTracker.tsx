@@ -16,7 +16,7 @@ export default function OpponentTracker({
         <p role="status" className="text-lg text-ink-3">
           Loading team outlooks…
         </p>
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {[0, 1, 2].map((i) => (
             <div key={i} className="skeleton h-48" />
           ))}
@@ -26,7 +26,7 @@ export default function OpponentTracker({
   }
 
   return (
-    <div data-testid="opponent-tracker" className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+    <div data-testid="opponent-tracker" className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
       {outlooks.map((team) => {
         const filled = team.slots.filter((s) => s.player_name != null).length
         const isMe = team.team_index === state.my_slot
@@ -39,10 +39,11 @@ export default function OpponentTracker({
               isMe ? 'border-accent/60 shadow-glow-sm' : ''
             }`}
           >
-            <h3 className="section-title flex flex-wrap items-center gap-2">
+            {/* h2: sits directly under the room's h1 — no skipped level. */}
+            <h2 className="section-title flex flex-wrap items-center gap-2">
               <span className="truncate">{team.name}</span>
               {isMe && <span className="chip bg-accent/15 text-accent">you</span>}
-            </h3>
+            </h2>
 
             <div>
               <div className="flex items-baseline justify-between gap-3">
